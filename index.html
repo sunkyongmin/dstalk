@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>실시간 문진 통역</title>
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --ink:#14201D; --muted:#586862; --line:#D2DBD7;
+  --accent:#0B6E5F; --accent-ink:#FFFFFF; --accent-soft:#DDEEE9;
+  --patient-bg:#FFF2CC; --patient-ink:#261D00; --patient-line:#E5CF8A;
+  --ok:#0B6E5F; --ext:#A23B1E; --ext-soft:#FBE4DC; --live:#C62828;
+  --font:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Noto Sans Myanmar","Myanmar Text","Noto Sans Khmer","Khmer OS","Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0F1715; --surface:#18231F; --ink:#E7EFEC; --muted:#9BACA6; --line:#2D3B36;
+  --accent:#4FC4AE; --accent-ink:#06211C; --accent-soft:#1D332E;
+  --patient-bg:#3A2F0E; --patient-ink:#FFEFC2; --patient-line:#6A5720;
+  --ok:#4FC4AE; --ext:#F0906F; --ext-soft:#3B211A; --live:#FF6B6B; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5}
+.wrap{max-width:900px;margin:0 auto;padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+h1{font-size:20px;margin:0;font-weight:700}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:15px;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.chip small{opacity:.75;margin-left:4px;font-size:12px}
+.priv{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
+.badge{border-radius:6px;padding:3px 8px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.badge.in{color:var(--ok);border-color:var(--ok)}
+.badge.out{color:var(--ext);border-color:var(--ext);background:var(--ext-soft);font-weight:600}
+.strict{display:flex;gap:6px;align-items:center;color:var(--muted)}
+.bar{display:grid;grid-template-columns:1fr auto;gap:8px}
+.go{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;min-height:56px}
+.go.on{background:var(--live);color:#fff}
+.flip{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;min-height:56px;font-size:14px}
+.status{font-size:15px;font-weight:600;min-height:24px;margin:0}
+.status.err{color:var(--ext)}
+.qa{border-radius:14px;border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+.turn{padding:14px;display:flex;flex-direction:column;gap:6px;min-height:120px;min-width:0;border:2px solid transparent;background:var(--surface)}
+.turn.q{background:var(--patient-bg);color:var(--patient-ink)}
+.turn.a{border-top-color:var(--line)}
+.turn.listening{border-color:var(--live)}
+.turn .tag{font-size:13px;font-weight:700;letter-spacing:.02em;display:flex;justify-content:space-between;gap:8px}
+.turn .mic{color:var(--live);font-weight:700}
+.turn .main{font-size:26px;line-height:1.55;font-weight:600;margin:0;overflow-wrap:anywhere}
+.turn .subt{font-size:15px;opacity:.85;margin:0;overflow-wrap:anywhere}
+.turn .interim{font-size:15px;font-style:italic;opacity:.7;margin:0;overflow-wrap:anywhere}
+.turn .wait{font-size:15px;opacity:.6;margin:0}
+h2{font-size:14px;color:var(--muted);margin:6px 0 0;font-weight:600}
+.typed{display:grid;grid-template-columns:1fr auto;gap:8px}
+.typed input{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;min-width:0}
+.sec{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;min-height:44px;font-size:14px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px}
+summary{cursor:pointer;padding:10px 0;font-weight:600}
+.list{display:flex;flex-direction:column;gap:6px;padding-bottom:10px}
+.phrase{text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.phrase .k{font-weight:600}
+.phrase .f{font-size:14px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.log li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.log .who{font-weight:700;color:var(--accent)}
+.log .who.p{color:var(--ext)}
+.log .o{grid-column:2;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.note{font-size:13px;color:var(--muted);margin:0}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+footer p{margin:0} footer strong{color:var(--ink)}
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;min-height:120px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>실시간 문진 통역</h1>
+  <div class="chips" id="langs" role="group" aria-label="환자 언어"></div>
+
+  <div class="priv" aria-live="polite">
+    <span class="badge" id="bSrKo">한국어 음성: 확인 전</span>
+    <span class="badge" id="bSrPt">환자 음성: 확인 전</span>
+    <span class="badge" id="bTr">번역: 확인 전</span>
+    <label class="strict"><input type="checkbox" id="strict"> 외부 전송 차단 (기기 안에서 되는 것만)</label>
+  </div>
+
+  <div class="bar">
+    <button class="go" id="go" type="button">통역 시작</button>
+    <button class="flip" id="flip" type="button">듣는 언어 바꾸기<br><small>스페이스바</small></button>
+  </div>
+  <p class="status" id="status" aria-live="polite">시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.</p>
+
+  <div class="qa">
+    <div class="turn q" id="panKo">
+      <div class="tag"><span>① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
+      <p class="subt" id="qKo"></p>
+      <p class="main" id="qPt"></p>
+      <p class="subt" id="qBack"></p>
+      <p class="interim" id="koInterim"></p>
+      <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
+    </div>
+    <div class="turn a" id="panPt">
+      <div class="tag"><span id="ptTag">② 대답 · 환자</span><span class="mic" id="ptMic" hidden>🎤</span></div>
+      <p class="main" id="aKo"></p>
+      <p class="subt" id="aPt"></p>
+      <p class="interim" id="ptInterim"></p>
+      <p class="wait" id="aWait">질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.</p>
+    </div>
+  </div>
+
+  <form class="typed" id="typedForm">
+    <input id="typed" autocomplete="off" aria-label="글로 입력" placeholder="글로 입력해서 통역 (지금 듣는 쪽 언어로)">
+    <button class="sec" type="submit">통역</button>
+  </form>
+
+  <details>
+    <summary>빠른 문구 40개 (누르면 바로 보여주고 읽어줍니다)</summary>
+    <div class="chips" id="cats" style="padding-bottom:10px"></div>
+    <div class="list" id="phrases"></div>
+  </details>
+
+  <h2>지난 문답 <span id="logN"></span></h2>
+  <div class="btnrow">
+    <button class="sec" id="copyLog" type="button">차트용으로 복사</button>
+    <button class="sec" id="clearLog" type="button">기록 지우기</button>
+  </div>
+  <textarea id="copyArea" hidden readonly aria-label="복사할 기록"></textarea>
+  <ul class="log" id="log"></ul>
+  <p class="note" id="logEmpty">질문과 대답이 짝지어 여기에 쌓입니다. 이 기기 안에만 있고 화면을 닫으면 사라집니다.</p>
+
+  <footer>
+    <p><strong>빨간 "외부 전송" 표시가 켜진 항목</strong>은 음성이나 문장이 브라우저 회사의 음성 서버 또는 구글 번역으로 나갑니다. 이름, 주민번호, 연락처는 말하지 마세요.</p>
+    <p>기계 통역입니다. 중요한 내용은 예/아니오로 다시 확인하고, 동의서와 중한 설명은 전문 통역을 쓰세요. 다누리콜센터 <strong>1577-1366</strong> · BBB 코리아 <strong>1588-5644</strong></p>
+  </footer>
+</div>
+
+<script>
+const LANGS=[
+ {id:'en',ko:'영어',nat:'English',sr:'en-US',say:'Please speak now'},
+ {id:'zh',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',say:'请现在说话'},
+ {id:'ru',ko:'러시아어',nat:'Русский',sr:'ru-RU',say:'Говорите, пожалуйста'},
+ {id:'mn',ko:'몽골어',nat:'Монгол',sr:'mn-MN',say:'Одоо ярина уу'},
+ {id:'my',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',say:'အခု ပြောပါ'},
+ {id:'km',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',say:'សូមនិយាយឥឡូវនេះ'},
+ {id:'vi',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',say:'Xin hãy nói'}
+];
+const CATS=['기본','증상','과거력','검진','안내'];
+// [분류, ko, en, zh, ru, mn, my, km, vi]
+const P=[
+['기본','안녕하세요. 저는 의사입니다.','Hello. I am a doctor.','您好，我是医生。','Здравствуйте. Я врач.','Сайн байна уу. Би эмч байна.','မင်္ဂလာပါ။ ဆရာဝန်ပါ။','សួស្តី។ ខ្ញុំជាគ្រូពេទ្យ។','Xin chào. Tôi là bác sĩ.'],
+['기본','이 화면으로 통역합니다. 버튼을 눌러 대답해 주세요.','We will use this screen to translate. Please answer by tapping a button.','我们用这个屏幕翻译。请点按钮回答。','Мы будем переводить с помощью этого экрана. Пожалуйста, отвечайте, нажимая на кнопки.','Бид энэ дэлгэцээр орчуулна. Товчлуур дээр дарж хариулна уу.','ဒီဖန်သားပြင်နဲ့ ဘာသာပြန်ပါမယ်။ ခလုတ်ကို နှိပ်ပြီး ဖြေပေးပါ။','យើងនឹងប្រើអេក្រង់នេះដើម្បីបកប្រែ។ សូមចុចប៊ូតុងដើម្បីឆ្លើយ។','Chúng tôi dùng màn hình này để phiên dịch. Xin hãy bấm nút để trả lời.'],
+['기본','잠시 기다려 주세요.','Please wait a moment.','请稍等。','Подождите, пожалуйста.','Түр хүлээнэ үү.','ခဏ စောင့်ပေးပါ။','សូមរង់ចាំបន្តិច។','Xin vui lòng đợi một chút.'],
+['기본','이해하셨어요?','Do you understand?','您明白了吗？','Вам понятно?','Та ойлгосон уу?','နားလည်ပါသလား။','តើអ្នកយល់ទេ?','Anh/chị có hiểu không?'],
+['기본','더 궁금한 것이 있어요?','Do you have any other questions?','您还有其他问题吗？','У вас есть ещё вопросы?','Танд өөр асуух зүйл байна уу?','တခြား မေးစရာ ရှိပါသေးလား။','តើអ្នកមានសំណួរផ្សេងទៀតទេ?','Anh/chị còn câu hỏi nào khác không?'],
+
+['증상','어디가 불편해서 오셨어요?','What problem brings you here today?','您哪里不舒服？','Что вас беспокоит?','Танд ямар зовиур байна вэ?','ဘာဖြစ်လို့ လာပြတာပါလဲ။','តើអ្នកមិនស្រួលខ្លួនត្រង់ណា?','Anh/chị bị khó chịu ở đâu?'],
+['증상','아픈 곳을 손으로 가리켜 주세요.','Please point to where it hurts.','请用手指出疼的地方。','Покажите рукой, где болит.','Өвдөж байгаа газраа гараараа заана уу.','နာတဲ့နေရာကို လက်နဲ့ ပြပေးပါ။','សូមចង្អុលកន្លែងដែលឈឺ។','Xin hãy chỉ vào chỗ đau.'],
+['증상','언제부터 시작됐어요?','When did it start?','从什么时候开始的？','Когда это началось?','Хэзээнээс эхэлсэн бэ?','ဘယ်တုန်းက စဖြစ်တာပါလဲ။','តើវាចាប់ផ្តើមតាំងពីពេលណា?','Bắt đầu từ khi nào?'],
+['증상','통증이 얼마나 심한가요? 0에서 10 중에서 골라 주세요.','How bad is the pain? Please choose a number from 0 to 10.','疼得有多厉害？请从0到10中选一个数字。','Насколько сильная боль? Выберите число от 0 до 10.','Өвдөлт хэр хүчтэй байна вэ? 0-ээс 10 хүртэл тоо сонгоно уу.','ဘယ်လောက် နာပါသလဲ။ ၀ ကနေ ၁၀ အထိ နံပါတ်တစ်ခု ရွေးပေးပါ။','តើឈឺខ្លាំងប៉ុណ្ណា? សូមជ្រើសរើសលេខពី 0 ដល់ 10។','Đau nhiều đến mức nào? Xin hãy chọn một số từ 0 đến 10.'],
+['증상','열이 났어요?','Have you had a fever?','您发烧了吗？','У вас была температура?','Та халуурсан уу?','အဖျားရှိပါသလား။','តើអ្នកមានគ្រុនក្តៅទេ?','Anh/chị có bị sốt không?'],
+['증상','기침이나 가래가 있어요?','Do you have a cough or phlegm?','您咳嗽或者有痰吗？','У вас есть кашель или мокрота?','Та ханиалгаж байна уу, цэр гарч байна уу?','ချောင်းဆိုးတာ ဒါမှမဟုတ် သလိပ်ထွက်တာ ရှိပါသလား။','តើអ្នកក្អក ឬមានស្លេសទេ?','Anh/chị có ho hoặc có đờm không?'],
+['증상','숨이 차요?','Are you short of breath?','您觉得喘不上气吗？','У вас есть одышка?','Таны амьсгал давчдаж байна уу?','အသက်ရှူရ ကျပ်ပါသလား။','តើអ្នកពិបាកដកដង្ហើមទេ?','Anh/chị có khó thở không?'],
+['증상','가슴이 아파요?','Do you have chest pain?','您胸口疼吗？','У вас болит в груди?','Таны цээж өвдөж байна уу?','ရင်ဘတ် နာပါသလား။','តើអ្នកឈឺទ្រូងទេ?','Anh/chị có đau ngực không?'],
+['증상','토하거나 설사를 했어요?','Have you had vomiting or diarrhea?','您呕吐或者拉肚子了吗？','У вас была рвота или понос?','Та бөөлжсөн үү, суулгасан уу?','အန်တာ ဒါမှမဟုတ် ဝမ်းလျှောတာ ရှိပါသလား။','តើអ្នកក្អួត ឬរាគទេ?','Anh/chị có nôn hoặc tiêu chảy không?'],
+['증상','어지럽거나 머리가 아파요?','Do you feel dizzy or have a headache?','您头晕或者头疼吗？','У вас кружится или болит голова?','Таны толгой эргэж эсвэл өвдөж байна уу?','ခေါင်းမူးတာ ဒါမှမဟုတ် ခေါင်းကိုက်တာ ရှိပါသလား။','តើអ្នកវិលមុខ ឬឈឺក្បាលទេ?','Anh/chị có chóng mặt hoặc đau đầu không?'],
+['증상','다쳤어요?','Were you injured?','您受伤了吗？','Вы получили травму?','Та гэмтсэн үү?','ထိခိုက်ဒဏ်ရာ ရခဲ့ပါသလား။','តើអ្នកមានរបួសទេ?','Anh/chị có bị chấn thương không?'],
+['증상','소변 볼 때 아파요?','Does it hurt when you urinate?','您小便的时候疼吗？','Вам больно при мочеиспускании?','Шээхэд өвдөж байна уу?','ဆီးသွားတဲ့အခါ နာပါသလား။','តើអ្នកឈឺពេលនោមទេ?','Anh/chị có đau khi đi tiểu không?'],
+
+['과거력','고혈압이나 당뇨가 있어요?','Do you have high blood pressure or diabetes?','您有高血压或者糖尿病吗？','У вас есть гипертония или сахарный диабет?','Та даралт ихсэх эсвэл чихрийн шижин өвчтэй юу?','သွေးတိုး ဒါမှမဟုတ် ဆီးချိုရောဂါ ရှိပါသလား။','តើអ្នកមានជំងឺលើសឈាម ឬទឹកនោមផ្អែមទេ?','Anh/chị có bị cao huyết áp hoặc tiểu đường không?'],
+['과거력','지금 먹는 약이 있어요?','Are you taking any medicine now?','您现在在吃什么药吗？','Вы сейчас принимаете какие-нибудь лекарства?','Та одоо ямар нэг эм ууж байгаа юу?','အခု သောက်နေတဲ့ဆေး ရှိပါသလား။','តើអ្នកកំពុងលេបថ្នាំអ្វីទេ?','Hiện anh/chị có đang uống thuốc gì không?'],
+['과거력','약이나 음식에 알레르기가 있어요?','Are you allergic to any medicine or food?','您对药物或者食物过敏吗？','У вас есть аллергия на лекарства или продукты?','Та эм эсвэл хоолны харшилтай юу?','ဆေး ဒါမှမဟုတ် အစားအစာနဲ့ မတည့်တာ ရှိပါသလား။','តើអ្នកមានប្រតិកម្មនឹងថ្នាំ ឬអាហារទេ?','Anh/chị có bị dị ứng thuốc hoặc thức ăn không?'],
+['과거력','수술받은 적이 있어요?','Have you ever had surgery?','您做过手术吗？','Вам делали операции?','Та хагалгаанд орж байсан уу?','ခွဲစိတ်ကုသမှု ခံယူဖူးပါသလား။','តើអ្នកធ្លាប់វះកាត់ទេ?','Anh/chị có từng phẫu thuật không?'],
+['과거력','임신했을 가능성이 있어요?','Is there a chance you are pregnant?','您有可能怀孕吗？','Возможно ли, что вы беременны?','Та жирэмсэн байж болзошгүй юу?','ကိုယ်ဝန်ရှိနိုင်ပါသလား။','តើអ្នកអាចមានផ្ទៃពោះទេ?','Chị có khả năng đang mang thai không?'],
+['과거력','담배를 피우거나 술을 마셔요?','Do you smoke or drink alcohol?','您抽烟或者喝酒吗？','Вы курите или употребляете алкоголь?','Та тамхи татдаг уу, архи уудаг уу?','ဆေးလိပ်သောက်တာ ဒါမှမဟုတ် အရက်သောက်တာ ရှိပါသလား။','តើអ្នកជក់បារី ឬផឹកស្រាទេ?','Anh/chị có hút thuốc hoặc uống rượu không?'],
+
+['검진','혈압을 재겠습니다.','I will check your blood pressure.','我给您量一下血压。','Я измерю вам давление.','Таны даралтыг хэмжье.','သွေးပေါင်ချိန် တိုင်းပါမယ်။','ខ្ញុំនឹងវាស់សម្ពាធឈាមរបស់អ្នក។','Tôi sẽ đo huyết áp cho anh/chị.'],
+['검진','손가락에서 피를 조금 뽑아 혈당을 재겠습니다.','I will take a small drop of blood from your finger to check your blood sugar.','我要从您的手指取一点血来测血糖。','Я возьму каплю крови из пальца, чтобы измерить сахар.','Хуруунаас тань бага зэрэг цус авч, цусны сахарыг хэмжинэ.','လက်ချောင်းက သွေးနည်းနည်းယူပြီး သွေးထဲက သကြားဓာတ် တိုင်းပါမယ်။','ខ្ញុំនឹងយកឈាមបន្តិចពីម្រាមដៃ ដើម្បីវាស់ជាតិស្ករក្នុងឈាម។','Tôi sẽ lấy một giọt máu ở ngón tay để đo đường huyết.'],
+['검진','여기에 누우세요.','Please lie down here.','请躺在这里。','Лягте сюда, пожалуйста.','Энд хэвтэнэ үү.','ဒီမှာ လှဲပေးပါ။','សូមដេកនៅទីនេះ។','Xin hãy nằm xuống đây.'],
+['검진','입을 크게 벌리세요.','Please open your mouth wide.','请张大嘴。','Откройте рот широко.','Амаа том ангайна уу.','ပါးစပ်ကို ကျယ်ကျယ် ဟပေးပါ။','សូមហាមាត់ឱ្យធំ។','Xin hãy há miệng to.'],
+['검진','숨을 크게 들이마시고 내쉬세요.','Take a deep breath in, then breathe out.','请深吸气，然后呼气。','Сделайте глубокий вдох и выдохните.','Гүнзгий амьсгаа аваад гаргана уу.','အသက်ကို ပြင်းပြင်းရှူသွင်းပြီး ပြန်ထုတ်ပေးပါ။','សូមដកដង្ហើមចូលឱ្យជ្រៅ រួចដកដង្ហើមចេញ។','Hít vào thật sâu rồi thở ra.'],
+['검진','여기를 누르면 아파요?','Does it hurt when I press here?','我按这里的时候疼吗？','Больно, когда я нажимаю здесь?','Энд дарахад өвдөж байна уу?','ဒီနေရာကို ဖိရင် နာပါသလား။','ពេលខ្ញុំចុចត្រង់នេះ តើឈឺទេ?','Tôi ấn vào đây có đau không?'],
+['검진','옷을 조금 올려 주세요.','Please lift your shirt a little.','请把衣服往上拉一点。','Поднимите, пожалуйста, одежду немного.','Хувцсаа жаахан дээш нь татна уу.','အင်္ကျီကို နည်းနည်း လှန်ပေးပါ။','សូមលើកអាវឡើងបន្តិច។','Xin hãy kéo áo lên một chút.'],
+['검진','힘을 빼세요.','Please relax.','请放松。','Расслабьтесь.','Биеэ суллана уу.','အကြောလျှော့ထားပါ။','សូមបន្ធូរខ្លួន។','Xin hãy thả lỏng.'],
+
+['안내','큰 문제는 아닙니다.','It is not a serious problem.','问题不严重。','Ничего серьёзного.','Ноцтой асуудал биш байна.','စိုးရိမ်စရာ မဟုတ်ပါဘူး။','វាមិនមែនជាបញ្ហាធ្ងន់ធ្ងរទេ។','Không có gì nghiêm trọng.'],
+['안내','약을 드리겠습니다.','I will give you some medicine.','我给您开药。','Я дам вам лекарство.','Танд эм өгнө.','ဆေးပေးပါမယ်။','ខ្ញុំនឹងឱ្យថ្នាំអ្នក។','Tôi sẽ cho anh/chị thuốc.'],
+['안내','이 약을 하루 한 번, 식사 후에 드세요.','Take this medicine once a day, after a meal.','这个药每天吃一次，饭后吃。','Принимайте это лекарство один раз в день после еды.','Энэ эмийг өдөрт нэг удаа, хоолны дараа ууна уу.','ဒီဆေးကို တစ်နေ့ တစ်ကြိမ်၊ အစာစားပြီးမှ သောက်ပါ။','សូមលេបថ្នាំនេះ មួយថ្ងៃម្តង ក្រោយពេលបាយ។','Uống thuốc này mỗi ngày một lần, sau bữa ăn.'],
+['안내','이 약을 하루 두 번, 식사 후에 드세요.','Take this medicine twice a day, after meals.','这个药每天吃两次，饭后吃。','Принимайте это лекарство два раза в день после еды.','Энэ эмийг өдөрт хоёр удаа, хоолны дараа ууна уу.','ဒီဆေးကို တစ်နေ့ နှစ်ကြိမ်၊ အစာစားပြီးမှ သောက်ပါ။','សូមលេបថ្នាំនេះ មួយថ្ងៃពីរដង ក្រោយពេលបាយ។','Uống thuốc này mỗi ngày hai lần, sau bữa ăn.'],
+['안내','이 약을 하루 세 번, 식사 후에 드세요.','Take this medicine three times a day, after meals.','这个药每天吃三次，饭后吃。','Принимайте это лекарство три раза в день после еды.','Энэ эмийг өдөрт гурван удаа, хоолны дараа ууна уу.','ဒီဆေးကို တစ်နေ့ သုံးကြိမ်၊ အစာစားပြီးမှ သောက်ပါ။','សូមលេបថ្នាំនេះ មួយថ្ងៃបីដង ក្រោយពេលបាយ។','Uống thuốc này mỗi ngày ba lần, sau bữa ăn.'],
+['안내','주사를 놓겠습니다.','I will give you an injection.','我给您打针。','Я сделаю вам укол.','Танд тариа хийнэ.','ဆေးထိုးပေးပါမယ်။','ខ្ញុំនឹងចាក់ថ្នាំឱ្យអ្នក។','Tôi sẽ tiêm cho anh/chị.'],
+['안내','병원에 가서 검사를 받아야 합니다.','You need to go to a hospital for tests.','您需要去医院做检查。','Вам нужно обратиться в больницу и пройти обследование.','Та эмнэлэгт очиж шинжилгээ хийлгэх хэрэгтэй.','ဆေးရုံသွားပြီး စစ်ဆေးမှု ခံယူဖို့ လိုပါတယ်။','អ្នកត្រូវទៅមន្ទីរពេទ្យដើម្បីពិនិត្យ។','Anh/chị cần đến bệnh viện để làm xét nghiệm.'],
+['안내','지금 바로 응급실에 가야 합니다.','You need to go to the emergency room right now.','您现在必须马上去急诊室。','Вам нужно срочно ехать в отделение неотложной помощи.','Та яг одоо яаралтай тусламжийн тасагт очих хэрэгтэй.','အခုချက်ချင်း အရေးပေါ်ဌာနကို သွားဖို့ လိုပါတယ်။','អ្នកត្រូវទៅបន្ទប់សង្គ្រោះបន្ទាន់ឥឡូវនេះ។','Anh/chị cần đến phòng cấp cứu ngay bây giờ.'],
+['안내','증상이 심해지면 병원에 가세요.','If your symptoms get worse, go to a hospital.','如果症状加重，请去医院。','Если станет хуже, обратитесь в больницу.','Шинж тэмдэг хүндэрвэл эмнэлэгт очоорой.','ရောဂါလက္ခဏာ ပိုဆိုးလာရင် ဆေးရုံသွားပါ။','បើអាការៈកាន់តែធ្ងន់ សូមទៅមន្ទីរពេទ្យ។','Nếu triệu chứng nặng hơn, hãy đến bệnh viện.']
+];
+
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const PT_SILENCE_MS=12000;
+let lang='en',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let srLocal={},trLocal=null,translators={};
+try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
+const L=()=>LANGS.find(l=>l.id===lang);
+const idx=()=>LANGS.findIndex(l=>l.id===lang);
+
+function status(t,err){const s=$('status');s.textContent=t;s.classList.toggle('err',!!err);}
+function badge(id,label,state){const b=$(id);b.className='badge'+(state==='in'?' in':state==='out'?' out':'');
+  b.textContent=label+': '+(state==='in'?'기기 안':state==='out'?'외부 전송':state==='none'?'지원 안 됨':'확인 전');}
+
+/* ---------- 음성 합성 ---------- */
+function loadVoices(){try{voices=window.speechSynthesis?speechSynthesis.getVoices():[];}catch(e){voices=[];}}
+function speak(text,code){return new Promise(res=>{
+  let v=null;try{v=voices.find(x=>x.lang&&x.lang.toLowerCase().replace('_','-').startsWith(code));}catch(e){}
+  if(!v||!window.speechSynthesis)return res(false);
+  let done=false;const fin=()=>{if(!done){done=true;res(true);}};
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.voice=v;u.lang=v.lang;u.rate=.92;u.onend=fin;u.onerror=fin;
+    speechSynthesis.speak(u);setTimeout(fin,2500+text.length*160);}catch(e){fin();}
+});}
+
+const within=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+/* ---------- 번역: 기기 안(Chrome Translator) 우선, 안 되면 외부 ---------- */
+let pendingTr={};
+function trBadge(){const l=L();const ok=!!(translators['ko>'+l.id]&&translators[l.id+'>ko']);trLocal=ok;
+  const dl=pendingTr['ko>'+l.id]||pendingTr[l.id+'>ko'];badge('bTr','번역',ok?'in':'out');if(!ok&&dl)$('bTr').textContent='번역: 외부 전송 (기기용 모델 내려받는 중)';}
+async function localTranslator(from,to){
+  if(!('Translator' in self))return null;
+  const k=from+'>'+to;if(k in translators)return translators[k];
+  const strict=$('strict').checked;
+  if(pendingTr[k])return strict?within(pendingTr[k],180000):null;
+  let a=null;try{a=await within(Translator.availability({sourceLanguage:from,targetLanguage:to}),3000);}catch(e){}
+  if(!a||a==='unavailable'){translators[k]=null;return null;}
+  const p=Translator.create({sourceLanguage:from,targetLanguage:to,monitor(m){m.addEventListener('downloadprogress',e=>{if(!running)status('번역 모델을 이 기기에 내려받는 중 '+Math.round((e.loaded||0)*100)+'%');});}})
+    .then(t=>{translators[k]=t;delete pendingTr[k];trBadge();return t;},()=>{translators[k]=null;delete pendingTr[k];trBadge();return null;});
+  pendingTr[k]=p;
+  if(a==='available')return within(p,8000);
+  return strict?within(p,180000):null;
+}
+const gcode=id=>id==='ko'?'ko':(LANGS.find(l=>l.id===id).gt||id);
+async function externalTranslate(text,from,to){
+  const sl=gcode(from),tl=gcode(to);
+  try{
+    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl='+sl+'&tl='+tl+'&q='+encodeURIComponent(text));
+    if(!r.ok)throw 0;const j=await r.json();
+    const out=(j[0]||[]).map(s=>s&&s[0]||'').join('').trim();if(out)return out;throw 0;
+  }catch(e){
+    const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair='+sl+'|'+tl);
+    const j=await r.json();const out=j&&j.responseData&&j.responseData.translatedText;
+    if(!out)throw new Error('translate');return String(out).trim();
+  }
+}
+async function translate(text,from,to){
+  const t=await localTranslator(from,to);
+  if(t)return (await t.translate(text)).trim();
+  if($('strict').checked)throw new Error('strict');
+  return externalTranslate(text,from,to);
+}
+
+/* ---------- 시작 전 점검: 어디서 처리되는지 ---------- */
+async function srCheck(code){
+  if(!SR)return 'none';
+  if(code in srLocal)return srLocal[code];
+  let st='out';
+  try{
+    if(SR.available){
+      let a=await within(SR.available({langs:[code],processLocally:true}),3000);
+      if(a==='downloadable'||a==='downloading'){
+        const p=Promise.resolve(SR.install({langs:[code],processLocally:true})).then(ok=>{if(ok){srLocal[code]='in';srBadges();}return ok;},()=>false);
+        if($('strict').checked){status('음성 인식 모델을 이 기기에 내려받는 중…');if(await within(p,180000))a='available';}
+      }
+      if(a==='available')st='in';
+    }
+  }catch(e){}
+  if(srLocal[code]!=='in')srLocal[code]=st;return srLocal[code];
+}
+function srBadges(){const l=L();if('ko-KR' in srLocal)badge('bSrKo','한국어 음성',srLocal['ko-KR']);if(l.sr in srLocal)badge('bSrPt',l.ko+' 음성',srLocal[l.sr]);}
+async function prepare(){
+  const l=L();
+  const [a,b]=[await srCheck('ko-KR'),await srCheck(l.sr)];
+  badge('bSrKo','한국어 음성',a);badge('bSrPt',l.ko+' 음성',b);
+  const t1=await localTranslator('ko',l.id),t2=await localTranslator(l.id,'ko');
+  trLocal=!!(t1&&t2);trBadge();
+  return {a,b,tr:trLocal};
+}
+
+/* ---------- 화면 ---------- */
+function ui(){
+  const l=L();
+  $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
+  const lk=running&&!busy&&side==='ko',lp=running&&!busy&&side==='pt';
+  $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
+  $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('ptMic').textContent='🎤 '+l.say;
+  $('ptTag').textContent='② 대답 · 환자 ('+l.ko+')';renderCur();
+  $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
+  if(running&&!busy)status(side==='ko'?'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요':'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+}
+function cur(){return log[log.length-1]||null;}
+function ask(q,qt){log.push({q,qt,back:'',a:'',at:''});renderLog();renderCur();return cur();}
+function answer(a,at){let c=cur();if(!c||c.a){log.push({q:'',qt:'',back:'',a:'',at:''});c=cur();}c.a=a;c.at=at;renderLog();renderCur();}
+function renderCur(){
+  const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
+  $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
+  $('aKo').textContent=c.a;$('aPt').textContent=c.at;
+  $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
+  $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
+  $('aWait').textContent=c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
+}
+function renderLog(){
+  const ul=$('log');ul.textContent='';const past=log.slice(0,-1).reverse();
+  past.forEach(e=>{const li=el('li');
+    if(e.q)li.append(el('span','who','질문'),el('span','',e.q),el('span','o',e.qt));
+    li.append(el('span','who p','대답'),el('span','',e.a||'(대답 없음)'));if(e.at)li.append(el('span','o',e.at));
+    ul.append(li);});
+  $('logEmpty').hidden=past.length>0;$('logN').textContent=log.length?'(전체 '+log.length+'건)':'';
+}
+
+/* ---------- 한 마디 처리 ---------- */
+async function handle(text,from){
+  busy=true;ui();const l=L();
+  try{
+    if(from==='ko'){
+      $('koInterim').textContent='';status('통역 중…');
+      const tr=await translate(text,'ko',l.id);
+      const c=ask(text,tr);
+      translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
+      status('🔊 '+l.ko+'로 읽는 중…');
+      await speak(tr,l.id);
+      side='pt';ptSince=Date.now();
+    }else{
+      $('ptInterim').textContent='';status('통역 중…');
+      const tr=await translate(text,l.id,'ko');
+      answer(tr,text);
+      side='ko';
+    }
+  }catch(e){
+    status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄면 통역됩니다.':'통역하지 못했습니다. 인터넷 연결을 확인하세요. 다시 말하면 재시도합니다.',true);
+    busy=false;ui2err();listen();return;
+  }
+  busy=false;ui();listen();
+}
+function ui2err(){const s=$('status').textContent;ui();if(running)status(s,true);}
+
+/* ---------- 음성 인식 루프 ---------- */
+function listen(){
+  if(!running||busy||!SR)return;
+  const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
+  let finalText='';
+  const r=new SR();rec=r;r.lang=code;r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
+  if(srLocal[code]==='in'){try{r.processLocally=true;}catch(e){}}
+  r.onresult=e=>{
+    if(token!==recToken)return;let inter='';
+    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t;else inter+=t;}
+    if(mySide==='pt')ptSince=Date.now();
+    $(mySide==='ko'?'koInterim':'ptInterim').textContent=inter||finalText;$(mySide==='ko'?'qWait':'aWait').hidden=true;
+  };
+  r.onerror=e=>{
+    if(token!==recToken)return;
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){stop();status('마이크 사용이 막혀 있습니다. 주소창의 자물쇠 아이콘에서 마이크를 허용한 뒤 다시 시작하세요.',true);}
+    else if(e.error==='language-not-supported'){
+      if(mySide==='pt'){side='ko';status('이 브라우저는 '+l.ko+' 음성 인식을 지원하지 않습니다. 환자 대답은 글로 입력받으세요.',true);badge('bSrPt',l.ko+' 음성','none');srLocal[code]='none';}
+      else{stop();status('이 브라우저는 한국어 음성 인식을 지원하지 않습니다. Chrome에서 열어 주세요.',true);}
+    }else if(e.error==='network'){status('음성 인식 서버에 연결하지 못했습니다. 인터넷을 확인하세요.',true);}
+  };
+  r.onend=()=>{
+    if(token!==recToken)return;
+    const text=finalText.trim();
+    if(text){handle(text,mySide);return;}
+    if(!running)return;
+    if(side==='pt'&&(srLocal[L().sr]==='none'||Date.now()-ptSince>PT_SILENCE_MS)){side='ko';ui();}
+    setTimeout(()=>{if(token===recToken)listen();},250);
+  };
+  try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
+}
+function abortRec(){recToken++;try{rec&&rec.abort();}catch(e){}rec=null;}
+async function start(){
+  if(!SR){status('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome(PC·안드로이드)이나 Safari(아이폰)에서 열어 주세요. 글 입력과 빠른 문구는 쓸 수 있습니다.',true);return;}
+  $('go').disabled=true;status('준비 중…');
+  let p;try{p=await prepare();}finally{$('go').disabled=false;}
+  if(p.a==='none'){status('한국어 음성 인식을 쓸 수 없습니다.',true);return;}
+  if($('strict').checked&&(p.a!=='in'||p.b!=='in'||!p.tr)){status('"외부 전송 차단" 상태에서는 '+L().ko+' 통역을 시작할 수 없습니다. 빨간 표시 항목이 기기 안에서 지원되지 않습니다.',true);return;}
+  running=true;side='ko';busy=false;
+  try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
+  ui();listen();
+}
+function stop(){running=false;busy=false;abortRec();try{speechSynthesis.cancel();}catch(e){}ui();status('멈췄습니다.');}
+function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();listen();}
+
+/* ---------- 이벤트 ---------- */
+$('go').onclick=()=>running?stop():start();
+$('flip').onclick=flip;
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
+$('strict').onchange=()=>{if(running)stop();};
+$('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();if(!t||busy)return;$('typed').value='';abortRec();handle(t,side);};
+
+function renderLangs(){
+  const box=$('langs');box.textContent='';
+  LANGS.forEach(l=>{const b=el('button','chip');b.type='button';b.textContent=l.ko;b.append(el('small','',l.nat));b.setAttribute('aria-pressed',l.id===lang);
+    b.onclick=()=>{const was=running;if(was)stop();lang=l.id;try{localStorage.setItem('dstalk-lang',lang);}catch(e){}
+      ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
+      badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderLangs();renderPhrases();ui();
+      status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':'시작을 누르면 의료진의 질문부터 듣습니다.');};
+    box.append(b);});
+}
+function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
+function renderPhrases(){
+  const box=$('phrases');box.textContent='';const i=idx();
+  P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';b.append(el('span','k',p[1]),el('span','f',p[2+i]));
+    b.onclick=async()=>{if(busy)return;abortRec();busy=true;ui();
+      const c=ask(p[1],p[2+i]);c.back='미리 넣은 문구';renderCur();
+      await speak(p[2+i],lang);busy=false;side='pt';ptSince=Date.now();ui();listen();};
+    box.append(b);});
+}
+$('copyLog').onclick=async()=>{
+  if(!log.some(e=>e.q||e.a))return;const b=$('copyLog');
+  const txt='[외국인 환자 문진 · 기계 통역 사용 · 언어: '+L().ko+']\n'+log.filter(e=>e.q||e.a).map(e=>(e.q?'의료진: '+e.q+'\n':'')+'환자: '+(e.a||'(대답 없음)')).join('\n');
+  try{await navigator.clipboard.writeText(txt);b.textContent='복사했습니다';}
+  catch(e){const a=$('copyArea');a.hidden=false;a.value=txt;a.focus();a.select();b.textContent='아래 글을 복사하세요';}
+  setTimeout(()=>{b.textContent='차트용으로 복사';},2500);
+};
+let armed=false;
+$('clearLog').onclick=()=>{const b=$('clearLog');
+  if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
+  armed=false;log=[];renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
+
+renderLangs();renderCats();renderPhrases();renderLog();renderCur();ui();loadVoices();
+badge('bSrPt',L().ko+' 음성');
+try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
+</script>
+</body>
+</html>
