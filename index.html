@@ -328,7 +328,9 @@ async function translate(text,from,to){
   const t=await localTranslator(from,to);
   if(t)return (await t.translate(text)).trim();
   if($('strict').checked)throw new Error('strict');
-  return externalTranslate(text,from,to);
+  let out=await externalTranslate(text,from,to);
+  if(to==='fil')out=out.replace(/^hello[.,!]?\s*/i,'Magandang araw po. ').trim();
+  return out;
 }
 
 /* ---------- 시작 전 점검: 어디서 처리되는지 ---------- */
