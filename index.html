@@ -92,6 +92,22 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .sheet .it>div{min-width:0}
 .sheet .it.off{opacity:.45}
 .sheet.only .it.off{display:none}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.form h2{font-size:22px;color:var(--ink);margin:0;line-height:1.4;font-weight:700}
+.form .meta{font-size:13px;color:var(--muted);margin:2px 0 0}
+.form h3{font-size:17px;margin:0 0 6px;padding-bottom:4px;border-bottom:2px solid var(--accent);color:var(--ink)}
+.form h3 small,.form h2 small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.form table{width:100%;border-collapse:collapse;font-size:17px}
+.form td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.form td small{display:block;font-size:11px;color:var(--muted)}
+.form td.v{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.form td.j{font-weight:700;text-align:right}
+.form td.j.ok{color:var(--ok)} .form td.j.ng{color:var(--live)}
+.form ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.form li{display:grid;grid-template-columns:auto 1fr;gap:8px;font-size:18px;line-height:1.55}
+.form li p{margin:0;overflow-wrap:anywhere} .form li small{display:block;font-size:12px;color:var(--muted)}
+.form .foot{font-size:12px;color:var(--muted);margin:0}
+.catbtn{grid-column:2;justify-self:start;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 12px;font-size:13px;min-height:32px;margin-top:4px}
 .sheet.only .it input{display:none}
 .sheet.only .it{grid-template-columns:1fr;cursor:default}
 .sheet .it .f{font-size:21px;font-weight:600;line-height:1.6;margin:0;overflow-wrap:anywhere}
@@ -301,6 +317,9 @@ const GUIDE=[['주증상','어디가 불편해서 오셨어요?'],['아픈 부�
 const TPL=[['bp','혈압',['정상','높음','낮음'],2],['glu','혈당',['정상','높음'],1],['chol','콜레스테롤',['정상','높음'],0],['hb','빈혈',['없음','있음'],0],['liver','간 검사',['정상','높음'],0],['kid','콩팥 검사',['정상','이상'],0],['ua','소변 검사',['정상','이상'],0],['cxr','가슴 엑스레이',['정상','이상'],0],['ecg','심전도',['정상','이상'],0]];
 const TPL_S={bp:{정상:'혈압은 정상입니다.',높음:'혈압이 높습니다.',낮음:'혈압이 낮습니다.'},glu:{정상:'혈당은 정상입니다.',높음:'혈당이 높습니다.'},chol:{정상:'콜레스테롤은 정상입니다.',높음:'콜레스테롤이 높습니다.'},hb:{없음:'빈혈은 없습니다.',있음:'빈혈이 있습니다.'},liver:{정상:'간 검사 결과는 정상입니다.',높음:'간 검사 결과가 정상보다 높습니다.'},kid:{정상:'콩팥 검사 결과는 정상입니다.',이상:'콩팥 검사 결과가 정상이 아닙니다.'},ua:{정상:'소변 검사 결과는 정상입니다.',이상:'소변 검사 결과가 정상이 아닙니다.'},cxr:{정상:'가슴 엑스레이는 정상입니다.',이상:'가슴 엑스레이 검사에서 이상이 발견되었습니다.'},ecg:{정상:'심전도는 정상입니다.',이상:'심전도 검사에서 이상이 발견되었습니다.'}};
 const TPL_X=[['re','병원 재검사 권유','병원에 가서 다시 검사를 받으세요.'],['med','약 복용 안내','약을 매일 빠뜨리지 말고 드셔야 합니다.'],['life','생활습관 안내','소금을 적게 드시고 운동을 하세요.']];
+const SHEET_EN=['Health check results','Test results','What you need to do','Other explanations','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No'];
+const SHEET_KO=['건강검진 결과 안내','검사 결과','하셔야 할 일','그 밖의 설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음'];
+const JIDX={정상:14,높음:15,낮음:16,이상:17,있음:18,없음:19};
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
@@ -537,7 +556,7 @@ async function handle(text,from,send){
       if(hit)tr=hit;
       else if(mode==='tell'){const ss=prepKo(text,true).split(/(?<=[.?!])\s+/).filter(Boolean);const ts=await Promise.all(ss.map(x=>translate(prepKo(x),'ko',l.id)));parts=ss.map((q,i)=>({q,qt:ts[i]}));tr=ts.join(' ');}
       else tr=await translate(prepKo(text),'ko',l.id);
-      const c=ask(text,tr);if(parts&&parts.length>1)c.parts=parts;
+      const c=ask(text,tr);if(parts){c.parts=parts;let hit2=false;parts.forEach(p=>{if(tplSet.has(p.q)){p.src='tpl';hit2=true;}});if(hit2&&tplSnap){c.tpl=tplSnap;tplSnap=null;tplSet=new Set();}}
       if(hit){c.back='미리 넣은 문구';renderCur();}
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
       status('🔊 '+l.ko+'로 읽는 중…');
@@ -661,21 +680,57 @@ function renderReply(){
   const pb=$('pain');pb.textContent='';
   for(let n=0;n<=10;n++){const b=el('button','',String(n));b.type='button';b.setAttribute('aria-label','통증 '+n);b.onclick=()=>pick('통증 '+n+'/10',String(n)+' / 10');pb.append(b);}
 }
-let sheetOnly=false;
-function sheetItems(){let a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!a.length)a=log.filter(e=>e.qt&&e.lang===lang);return a.flatMap(e=>e.parts||[e]);}
-function renderSheet(){
-  const l=L(),items=sheetItems();
-  const d=new Date();$('sheetTitle').textContent=l.flag+' '+l.nat+' · '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  const box=$('sheet');box.textContent='';box.classList.toggle('only',sheetOnly);
-  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'고른 문장만 환자에게 보여주기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!items.length;
-  const n=items.filter(e=>e.keep!==false).length;
-  $('sheetNote').textContent=!items.length?'':sheetOnly?'환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요. 기계 번역입니다.':'환자에게 남길 문장만 체크해 두세요. 지금 '+n+'개를 골랐습니다.';
-  if(!items.length){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));return;}
-  items.forEach((e,i)=>{const it=el('label','it'+(e.keep===false?' off':''));
-    const cb=el('input');cb.type='checkbox';cb.id='keep'+i;cb.checked=e.keep!==false;cb.onchange=()=>{e.keep=cb.checked;renderSheet();};
-    const tx=el('div');const f=el('p','f',e.qt);f.dir='auto';tx.append(f,el('p','k',e.q));it.append(cb,tx);box.append(it);});
+let sheetOnly=false,sheetLab=null,tplSnap=null,tplSet=new Set();
+async function batchEn(list,key){
+  const id=lang;if(id==='en')return list;
+  try{const c=JSON.parse(localStorage.getItem(key+id)||'null');if(c&&c.length===list.length)return c;}catch(e){}
+  if($('strict').checked)return null;
+  try{const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl='+gcode(id)+'&q='+encodeURIComponent(list.join('\n')));
+    const j=await r.json();const a=(j[0]||[]).map(s=>s&&s[0]||'').join('').split('\n').map(t=>t.trim()).filter(Boolean).map((t,i)=>/\.$/.test(list[i]||'')?t:t.replace(/[.。។။।\s]+$/,''));
+    if(a.length===list.length){try{localStorage.setItem(key+id,JSON.stringify(a));}catch(e){}return a;}}catch(e){}
+  return null;
 }
-function openSheet(){sheetOnly=false;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;}
+function sheetEntries(){let a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!a.length)a=log.filter(e=>e.qt&&e.lang===lang);return a;}
+function sheetRows(){const m={};sheetEntries().forEach(e=>{(e.tpl||[]).forEach(r=>{m[r.id]=r;});});return TPL.map(t=>m[t[0]]).filter(Boolean);}
+function sheetItems(){const hasTable=sheetRows().length>0;
+  return sheetEntries().flatMap(e=>e.parts||[e]).filter(p=>!(hasTable&&p.src==='tpl')).map(p=>{
+    if(p.cat==null)p.cat=/(세요|십시오|야 합니다|야 해요|필요합니다|바랍니다)[.!]?$/.test(p.q)&&!/^(안녕|감사|수고)/.test(p.q)?'do':'etc';
+    if(p.keep==null)p.keep=!/[?？]$/.test(p.q)&&!/^(안녕|감사|수고)/.test(p.q);
+    return p;});}
+function both(tag,i,cls){const e=el(tag,cls||'',sheetLab?sheetLab[i]:SHEET_KO[i]);e.dir='auto';if(sheetLab)e.append(el('small','',SHEET_KO[i]));return e;}
+function renderSheet(){
+  const l=L(),items=sheetItems(),rows=sheetRows(),any=items.length||rows.length;
+  const d=new Date(),date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  $('sheetTitle').textContent=l.flag+' '+l.nat;
+  const box=$('sheet');box.textContent='';box.classList.toggle('only',sheetOnly);
+  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'정리된 양식으로 환자에게 보여주기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!any;
+  const n=items.filter(e=>e.keep).length;
+  $('sheetNote').textContent=!any?'':sheetOnly?'환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요.':(rows.length?'입력한 검사 결과는 표로 자동으로 들어갑니다. ':'')+'아래에서 남길 문장을 체크하고, 종류(하실 일 / 설명)가 틀리면 눌러서 바꾸세요. 지금 '+n+'개를 골랐습니다.';
+  if(!any){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));return;}
+  if(!sheetOnly){
+    items.forEach((e,i)=>{const it=el('label','it'+(e.keep?'':' off'));
+      const cb=el('input');cb.type='checkbox';cb.id='keep'+i;cb.checked=!!e.keep;cb.onchange=()=>{e.keep=cb.checked;renderSheet();};
+      const tx=el('div');const f=el('p','f',e.qt);f.dir='auto';tx.append(f,el('p','k',e.q));
+      const cb2=el('button','catbtn',e.cat==='do'?'📌 하실 일':'💬 설명');cb2.type='button';cb2.onclick=ev=>{ev.preventDefault();e.cat=e.cat==='do'?'etc':'do';renderSheet();};
+      it.append(cb,tx,cb2);box.append(it);});
+    return;
+  }
+  const form=el('div','form');
+  const head=el('div');head.append(both('h2',0),el('p','meta',date+' · '+l.nat));form.append(head);
+  if(rows.length){const sec=el('div');sec.append(both('h3',1));const tb=el('table');
+    rows.forEach(r=>{const tr=el('tr');const ix=5+TPL.findIndex(t=>t[0]===r.id);
+      const good=r.j==='정상'||r.j==='없음';
+      const jd=el('td','j'+(r.j?(good?' ok':' ng'):''));if(r.j){jd.textContent=(good?'✓ ':'⚠ ')+(sheetLab?sheetLab[JIDX[r.j]]:r.j);if(sheetLab)jd.append(el('small','',r.j));}
+      tr.append(both('td',ix),el('td','v',r.val||''),jd);tb.append(tr);});
+    sec.append(tb);form.append(sec);}
+  [['do',2,'➜'],['etc',3,'•']].forEach(([cat,hi,mark])=>{const a=items.filter(e=>e.keep&&e.cat===cat);if(!a.length)return;
+    const sec=el('div');sec.append(both('h3',hi));const ul=el('ul');
+    a.forEach(e=>{const li=el('li');const p=el('p','',e.qt);p.dir='auto';p.append(el('small','',e.q));li.append(el('span','',mark),p);ul.append(li);});
+    sec.append(ul);form.append(sec);});
+  const foot=el('p','foot',(sheetLab?sheetLab[4]+' ':'')+'기계 번역입니다. 정확한 내용은 의료진에게 확인하세요.');foot.dir='auto';form.append(foot);
+  box.append(form);
+}
+async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s3-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
@@ -748,7 +803,8 @@ function tplSentences(){
   TPL_X.forEach(([id,label,sen])=>{if($('tx_'+id).checked)out.push(sen);});
   return out;
 }
-$('tplMake').onclick=()=>{const a=tplSentences();if(!a.length)return;const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+a.join(' ');d.scrollTop=d.scrollHeight;$('tpl').open=false;d.scrollIntoView({block:'center'});};
+$('tplMake').onclick=()=>{const a=tplSentences();if(!a.length)return;const xs=TPL_X.map(x=>x[2]);a.forEach(x=>{if(!xs.includes(x))tplSet.add(x);});
+  tplSnap=TPL.map(([id,label,opts,n])=>{const v=[];for(let i=0;i<n;i++)v.push($('t_'+id+'_'+i).value.trim());const j=$('t_'+id).value;const val=n===2?(v[0]&&v[1]?v[0]+'/'+v[1]:''):(v[0]||'');return {id,val,j:JIDX[j]?j:''};}).filter(r=>r.val||r.j);const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+a.join(' ');d.scrollTop=d.scrollHeight;$('tpl').open=false;d.scrollIntoView({block:'center'});};
 $('tplReset').onclick=renderTpl;
 /* ---------- 정도·기간 응답 버튼 ---------- */
 let extraCache={};
