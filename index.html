@@ -30,6 +30,18 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:15px;min-height:40px}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .chip small{opacity:.75;margin-left:4px;font-size:12px}
+.langrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.langrow .langsel{flex:1;min-width:220px}
+.picker{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.picker-in{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.picker-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.picker-head p{margin:0;font-size:22px;font-weight:700}
+.flags{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.flagbtn{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 8px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center}
+.flagbtn .fl{font-size:44px;line-height:1.1}
+.flagbtn .nat{font-size:20px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.flagbtn .kor{font-size:12px;color:var(--muted)}
+.flagbtn:active{background:var(--accent-soft)}
 .langsel{display:flex;align-items:center;gap:10px;font-weight:600}
 .langsel select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;flex:1;min-width:0;font-weight:600}
 .priv{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
@@ -77,9 +89,18 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 </style>
 </head>
 <body>
+<div class="picker" id="picker" hidden>
+  <div class="picker-in">
+    <div class="picker-head"><p>🌐 Language · 언어</p><button class="sec" id="pickClose" type="button">닫기 ✕</button></div>
+    <div class="flags" id="flags"></div>
+  </div>
+</div>
 <div class="wrap">
   <h1>실시간 문진 통역</h1>
-  <label class="langsel">환자 언어 <select id="langs"></select></label>
+  <div class="langrow">
+    <label class="langsel">환자 언어 <select id="langs"></select></label>
+    <button class="sec" id="pickOpen" type="button">🌐 국기로 고르기</button>
+  </div>
 
   <div class="priv" aria-live="polite">
     <span class="badge" id="bSrKo">한국어 음성: 확인 전</span>
@@ -142,24 +163,24 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
 <script>
 const LANGS=[
- {id:'zh',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
- {id:'vi',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
- {id:'th',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
- {id:'en',ko:'영어',nat:'English',sr:'en-US',col:0,say:'Please speak now'},
- {id:'uz',ko:'우즈베크어',nat:'Oʻzbekcha',sr:'uz-UZ',say:'Iltimos, gapiring'},
- {id:'ne',ko:'네팔어',nat:'नेपाली',sr:'ne-NP',say:'कृपया अहिले बोल्नुहोस्'},
- {id:'ru',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
- {id:'fil',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
- {id:'id',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
- {id:'km',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
- {id:'my',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',col:4,say:'အခု ပြောပါ'},
- {id:'mn',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
- {id:'bn',ko:'벵골어(방글라데시)',nat:'বাংলা',sr:'bn-BD',say:'অনুগ্রহ করে বলুন'},
- {id:'si',ko:'싱할라어(스리랑카)',nat:'සිංහල',sr:'si-LK',say:'කරුණාකර කතා කරන්න'},
- {id:'ur',ko:'우르두어(파키스탄)',nat:'اردو',sr:'ur-PK',say:'براہ کرم بولیں'},
- {id:'ky',ko:'키르기스어',nat:'Кыргызча',sr:'ky-KG',say:'Сураныч, сүйлөңүз'},
- {id:'lo',ko:'라오어',nat:'ລາວ',sr:'lo-LA',say:'ກະລຸນາເວົ້າ'},
- {id:'ja',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
+ {id:'zh',flag:'🇨🇳',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
+ {id:'vi',flag:'🇻🇳',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
+ {id:'th',flag:'🇹🇭',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
+ {id:'en',flag:'🇺🇸',ko:'영어',nat:'English',sr:'en-US',col:0,say:'Please speak now'},
+ {id:'uz',flag:'🇺🇿',ko:'우즈베크어',nat:'Oʻzbekcha',sr:'uz-UZ',say:'Iltimos, gapiring'},
+ {id:'ne',flag:'🇳🇵',ko:'네팔어',nat:'नेपाली',sr:'ne-NP',say:'कृपया अहिले बोल्नुहोस्'},
+ {id:'ru',flag:'🇷🇺',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
+ {id:'fil',flag:'🇵🇭',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
+ {id:'id',flag:'🇮🇩',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
+ {id:'km',flag:'🇰🇭',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
+ {id:'my',flag:'🇲🇲',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',col:4,say:'အခု ပြောပါ'},
+ {id:'mn',flag:'🇲🇳',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
+ {id:'bn',flag:'🇧🇩',ko:'벵골어(방글라데시)',nat:'বাংলা',sr:'bn-BD',say:'অনুগ্রহ করে বলুন'},
+ {id:'si',flag:'🇱🇰',ko:'싱할라어(스리랑카)',nat:'සිංහල',sr:'si-LK',say:'කරුණාකර කතා කරන්න'},
+ {id:'ur',flag:'🇵🇰',ko:'우르두어(파키스탄)',nat:'اردو',sr:'ur-PK',say:'براہ کرم بولیں'},
+ {id:'ky',flag:'🇰🇬',ko:'키르기스어',nat:'Кыргызча',sr:'ky-KG',say:'Сураныч, сүйлөңүз'},
+ {id:'lo',flag:'🇱🇦',ko:'라오어',nat:'ລາວ',sr:'lo-LA',say:'ກະລຸນາເວົ້າ'},
+ {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
 ];
 const CATS=['기본','증상','과거력','검진','안내'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
@@ -459,6 +480,16 @@ $('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;cons
   ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
   badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();ui();
   status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':'시작을 누르면 의료진의 질문부터 듣습니다.');};
+function renderFlags(){
+  const box=$('flags');box.textContent='';
+  LANGS.forEach(l=>{const b=el('button','flagbtn');b.type='button';b.lang=l.id;
+    b.append(el('span','fl',l.flag),el('span','nat',l.nat),el('span','kor',l.ko));
+    b.onclick=()=>{unlockPlayer();unlockSpeech();$('picker').hidden=true;
+      if(l.id!==lang||!running){$('langs').value=l.id;$('langs').onchange({target:$('langs')});start();}};
+    box.append(b);});
+}
+$('pickOpen').onclick=()=>{renderFlags();$('picker').hidden=false;};
+$('pickClose').onclick=()=>{$('picker').hidden=true;};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 function renderPhrases(){
