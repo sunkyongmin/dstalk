@@ -89,6 +89,9 @@ summary{cursor:pointer;padding:10px 0;font-weight:600}
 .note{font-size:13px;color:var(--muted);margin:0}
 footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
 footer p{margin:0} footer strong{color:var(--ink)}
+#draft{background:var(--surface);font-size:18px;min-height:92px;margin-bottom:8px}
+#draftBox .go{min-height:52px;padding:10px}
+.pbtn2{border:1px solid var(--patient-line);background:transparent;color:inherit;border-radius:12px;padding:0 16px;min-height:52px}
 textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%;min-height:120px;margin-bottom:10px}
 </style>
 </head>
@@ -115,7 +118,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <div class="seg" role="group" aria-label="사용 방식">
     <button type="button" id="modeAsk" aria-pressed="true">문진<small>묻고 대답 듣기</small></button>
-    <button type="button" id="modeTell" aria-pressed="false">결과 설명<small>의료진이 이어서 말하기</small></button>
+    <button type="button" id="modeTell" aria-pressed="false">결과 설명<small>다 말한 뒤 눌러서 통역</small></button>
   </div>
 
   <div class="bar">
@@ -127,6 +130,13 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   <div class="qa">
     <div class="turn q" id="panKo">
       <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
+      <div id="draftBox" hidden>
+        <textarea id="draft" rows="3" aria-label="설명할 내용" placeholder="말하면 여기에 한국어로 쌓입니다. 직접 고치거나 입력해도 됩니다."></textarea>
+        <div class="btnrow">
+          <button class="go" id="sendDraft" type="button" style="flex:1">통역해서 읽어주기</button>
+          <button class="pbtn2" id="clearDraft" type="button">지우기</button>
+        </div>
+      </div>
       <p class="subt" id="qKo"></p>
       <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
@@ -294,14 +304,15 @@ function gtts(text,code){return new Promise(res=>{
 
 /* 한국어 음성 인식 결과에는 문장부호가 없어 번역이 틀어지기 쉬움: 인사말 뒤 마침표, 질문에 물음표를 붙이고 흔한 문진 표현은 번역이 잘 되는 꼴로 바꿈 */
 const SUBJ=/^(혈압|혈당|콜레스테롤|중성지방|간 |간이|간은|콩팥|신장|소변|가슴|폐|심장|심전도|빈혈|체중|갑상선|엑스레이|초음파|요산|단백뇨|염증|검사 결과|결과)/;
-function fixKo(t){
+function fixKoTell(t){
   t=t.replace(/(\d+)에 (\d+)/g,'$1/$2');
   if(mode!=='tell')return t;
   return t.split(/(?<=[.?!])\s+/).map(x=>SUBJ.test(x)&&!/[?]$/.test(x)&&!/(당신|환자분)/.test(x)?'당신의 '+x:x).join(' ');
 }
-function prepKo(t){
+function prepKo(t,raw){
+  const fixKo=raw?(x=>x):fixKoTell;
   t=t.trim().replace(/\s+/g,' ');
-  if(/[.?!。？！]/.test(t))return fixKo(t);
+  if(/[.?!。？！]$/.test(t))return fixKo(t);
   t=t.replace(/(어디가|어디) ?(아파서|아프셔서|불편해서|불편하셔서|안 ?좋아서) ?(오셨어요|오셨나요|오셨습니까|왔어요|왔나요)$/,'어디가 아프세요')
      .replace(/(어떻게|무슨 ?일로|어쩐 ?일로) ?(오셨어요|오셨나요|오셨습니까|왔어요)$/,'어디가 아프세요');
   t=t.replace(/^(안녕하세요|안녕하십니까|네|예|아니요|감사합니다|죄송합니다|잠시만요|잠깐만요) (?=\S)/,'$1. ');
@@ -387,7 +398,7 @@ function ui(){
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent='② 대답 · 환자 ('+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 의료진이 한국어로 이어서 말하세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode});renderLog();renderCur();return cur();}
@@ -400,6 +411,7 @@ function renderCur(){
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
   $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 "듣는 언어 바꾸기"를 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
   $('koTag').textContent=mode==='tell'?'① 설명 · 의료진':'① 질문 · 의료진';
+  $('draftBox').hidden=mode!=='tell';if(mode==='tell')$('qWait').hidden=true;
 }
 function renderLog(){
   const ul=$('log');ul.textContent='';const past=log.slice(0,-1).reverse();
@@ -412,7 +424,11 @@ function renderLog(){
 }
 
 /* ---------- 한 마디 처리 ---------- */
-async function handle(text,from){
+async function handle(text,from,send){
+  if(from==='ko'&&mode==='tell'&&!send){
+    const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+prepKo(text,true);d.scrollTop=d.scrollHeight;
+    $('koInterim').textContent='';busy=false;ui();listen();return;
+  }
   busy=true;ui();const l=L();
   try{
     if(from==='ko'){
@@ -490,6 +506,8 @@ function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();li
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('flip').onclick=flip;
+$('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();const t=$('draft').value.trim();if(!t||busy)return;$('draft').value='';abortRec();handle(t,'ko',true);};
+$('clearDraft').onclick=()=>{$('draft').value='';};
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
