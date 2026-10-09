@@ -42,6 +42,11 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .flagbtn .nat{font-size:20px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
 .flagbtn .kor{font-size:12px;color:var(--muted)}
 .flagbtn:active{background:var(--accent-soft)}
+.caution{background:var(--ext-soft);border:1px solid var(--ext);border-radius:12px;padding:12px 14px;color:var(--ink)}
+.caution .ct{margin:0 0 6px;font-weight:700;color:var(--ext)}
+.caution ul{margin:0 0 10px;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+#cautionMini{border:0;background:transparent;color:var(--ext);font-size:13px;font-weight:600;padding:0;text-align:left;min-height:24px;line-height:1.5}
+.caution:has(#cautionMini:not([hidden])){padding:6px 12px}
 .langsel{display:flex;align-items:center;gap:10px;font-weight:600}
 .langsel select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;flex:1;min-width:0;font-weight:600}
 .priv{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
@@ -204,6 +209,18 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 </div>
 <div class="wrap">
   <h1>문진 및 설명 통역</h1>
+  <div class="caution" id="caution" role="note">
+    <div id="cautionFull">
+      <p class="ct">⚠ 쓰기 전에 확인하세요</p>
+      <ul>
+        <li><b>기계 통역입니다.</b> 번역과 문구는 원어민 검수를 거치지 않았습니다.</li>
+        <li><b>역번역을 확인하세요.</b> 번역문 아래의 한국어가 말한 뜻과 다르면 다시 말하세요.</li>
+        <li><b>이름, 주민번호, 연락처는 말하거나 입력하지 마세요.</b> 내용이 외부 서버로 전송됩니다.</li>
+      </ul>
+      <button class="sec" id="cautionOk" type="button">확인했습니다</button>
+    </div>
+    <button id="cautionMini" type="button" hidden>⚠ 기계 통역 · 검수 전 · 역번역 확인 · 개인정보 말하지 않기 <u>다시 보기</u></button>
+  </div>
   <div class="langrow">
     <label class="langsel">환자 언어 <select id="langs"></select></label>
     <button class="sec" id="pickOpen" type="button">🌐 국기로 고르기</button>
@@ -699,6 +716,8 @@ function renderFlags(){
       if(l.id!==lang||!running){$('langs').value=l.id;$('langs').onchange({target:$('langs')});start();}};
     box.append(b);});
 }
+$('cautionOk').onclick=()=>{$('cautionFull').hidden=true;$('cautionMini').hidden=false;};
+$('cautionMini').onclick=()=>{$('cautionFull').hidden=false;$('cautionMini').hidden=true;};
 $('pickOpen').onclick=()=>{renderFlags();$('picker').hidden=false;};
 $('pickClose').onclick=()=>{$('picker').hidden=true;};
 function renderReply(){
