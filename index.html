@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>문진 및 결과 설명 통역기</title>
+<title>문진 및 설명 통역</title>
 <style>
 :root{
   --bg:#EEF2F0; --surface:#FFFFFF; --ink:#14201D; --muted:#586862; --line:#D2DBD7;
@@ -55,6 +55,17 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .seg button[aria-pressed="true"]{background:var(--accent-soft);font-weight:700}
 .bar{display:grid;grid-template-columns:1fr;gap:8px}
 .turn{cursor:pointer}
+.reply{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.reply button{background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:58px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0}
+.reply .f{font-size:17px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.reply .k{font-size:11px;color:var(--muted)}
+.pain{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;margin-top:4px}
+.pain button{background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:44px;padding:0;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.painlab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+.sheet{display:flex;flex-direction:column;gap:14px}
+.sheet .it{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.sheet .it .f{font-size:21px;font-weight:600;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.sheet .it .k{font-size:13px;color:var(--muted);margin:4px 0 0}
 .turn .hint{font-weight:400;opacity:.7;font-size:12px}
 .go{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;min-height:56px}
 .go.on{background:var(--live);color:#fff}
@@ -104,8 +115,15 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="flags" id="flags"></div>
   </div>
 </div>
+<div class="picker" id="sheetBox" hidden>
+  <div class="picker-in">
+    <div class="picker-head"><p id="sheetTitle"></p><button class="sec" id="sheetClose" type="button">닫기 ✕</button></div>
+    <p class="note">환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요. 기계 번역입니다.</p>
+    <div class="sheet" id="sheet"></div>
+  </div>
+</div>
 <div class="wrap">
-  <h1>문진 및 결과 설명 통역기</h1>
+  <h1>문진 및 설명 통역</h1>
   <div class="langrow">
     <label class="langsel">환자 언어 <select id="langs"></select></label>
     <button class="sec" id="pickOpen" type="button">🌐 국기로 고르기</button>
@@ -120,7 +138,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <div class="seg" role="group" aria-label="사용 방식">
     <button type="button" id="modeAsk" aria-pressed="true">문진<small>묻고 대답 듣기</small></button>
-    <button type="button" id="modeTell" aria-pressed="false">결과 설명<small>다 말한 뒤 눌러서 통역</small></button>
+    <button type="button" id="modeTell" aria-pressed="false">설명<small>다 말한 뒤 눌러서 통역</small></button>
   </div>
 
   <div class="bar">
@@ -150,6 +168,9 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <p class="main" id="aKo"></p>
       <p class="subt" id="aPt" dir="auto"></p>
       <p class="interim" id="ptInterim" dir="auto"></p>
+      <div class="reply" id="reply"></div>
+      <div class="painlab"><span>0 🙂</span><span id="painTitle">0 – 10</span><span>😣 10</span></div>
+      <div class="pain" id="pain"></div>
       <p class="wait" id="aWait">질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.</p>
     </div>
   </div>
@@ -160,7 +181,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   </form>
 
   <details>
-    <summary>빠른 문구 40개 (누르면 바로 보여주고 읽어줍니다)</summary>
+    <summary>빠른 문구 (누르면 바로 보여주고 읽어줍니다)</summary>
     <div class="chips" id="cats" style="padding-bottom:10px"></div>
     <p class="note" id="phraseNote" style="padding-bottom:8px"></p>
     <div class="list" id="phrases"></div>
@@ -168,6 +189,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <h2>지난 문답 <span id="logN"></span></h2>
   <div class="btnrow">
+    <button class="sec" id="sheetOpen" type="button">📄 환자용 요약</button>
     <button class="sec" id="copyLog" type="button">차트용으로 복사</button>
     <button class="sec" id="clearLog" type="button">기록 지우기</button>
   </div>
@@ -211,6 +233,7 @@ const LANGS=[
  {id:'it',flag:'🇮🇹',ko:'이탈리아어',nat:'Italiano',sr:'it-IT',say:'Parli, per favore'},
  {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
 ];
+const YN={"en": ["Yes", "No", "I don't know"], "zh": ["是", "不是", "不知道"], "ru": ["Да", "Нет", "Не знаю"], "mn": ["Тийм", "Үгүй", "Мэдэхгүй"], "my": ["ဟုတ်ကဲ့", "မဟုတ်ဘူး", "မသိပါ"], "km": ["បាទ / ចាស", "ទេ", "មិនដឹងទេ"], "vi": ["Có", "Không", "Không biết"], "th": ["ใช่", "ไม่ใช่", "ไม่ทราบ"], "uz": ["Ha", "Yoʻq", "Bilmayman"], "ne": ["हो", "होइन", "थाहा छैन"], "fil": ["Oo", "Hindi", "Hindi ko alam"], "id": ["Ya", "Tidak", "Tidak tahu"], "bn": ["হ্যাঁ", "না", "জানি না"], "si": ["ඔව්", "නැහැ", "දන්නේ නැහැ"], "ur": ["جی ہاں", "نہیں", "معلوم نہیں"], "ky": ["Ооба", "Жок", "Билбейм"], "lo": ["ແມ່ນ", "ບໍ່", "ບໍ່ຮູ້"], "fr": ["Oui", "Non", "Je ne sais pas"], "es": ["Sí", "No", "No lo sé"], "ar": ["نعم", "لا", "لا أعرف"], "kk": ["Иә", "Жоқ", "Білмеймін"], "hi": ["हाँ", "नहीं", "पता नहीं"], "ta": ["ஆம்", "இல்லை", "தெரியாது"], "pt": ["Sim", "Não", "Não sei"], "de": ["Ja", "Nein", "Ich weiß nicht"], "it": ["Sì", "No", "Non lo so"], "ja": ["はい", "いいえ", "わかりません"]};
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
@@ -409,8 +432,8 @@ function ui(){
   if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
-function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode});renderLog();renderCur();return cur();}
-function answer(a,at){let c=cur();if(!c||c.a){log.push({q:'',qt:'',back:'',a:'',at:''});c=cur();}c.a=a;c.at=at;renderLog();renderCur();}
+function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
+function answer(a,at){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({q:'',qt:'',back:'',a:'',at:'',kind:mode,lang});c=cur();}c.a=c.a?c.a+' / '+a:a;c.at=c.at?c.at+' / '+at:at;renderLog();renderCur();}
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
   $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
@@ -549,7 +572,7 @@ function renderLangs(){
 }
 $('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;const l=L();try{localStorage.setItem('dstalk-lang',lang);}catch(x){}
   ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
-  badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();ui();
+  badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();renderReply();ui();
   status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':(mode==='tell'?'':'시작을 누르면 의료진의 질문부터 듣습니다.'));};
 function renderFlags(){
   const box=$('flags');box.textContent='';
@@ -561,6 +584,22 @@ function renderFlags(){
 }
 $('pickOpen').onclick=()=>{renderFlags();$('picker').hidden=false;};
 $('pickClose').onclick=()=>{$('picker').hidden=true;};
+function renderReply(){
+  const l=L(),yn=YN[l.id],ko=['예','아니오','모르겠어요'];const box=$('reply');box.textContent='';
+  const pick=(k,f)=>{if(busy)return;answer(k,f);if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();};
+  yn.forEach((f,i)=>{const b=el('button');b.type='button';const sp=el('span','f',f);sp.dir='auto';b.append(sp,el('span','k',ko[i]));b.onclick=()=>pick(ko[i],f);box.append(b);});
+  const pb=$('pain');pb.textContent='';
+  for(let n=0;n<=10;n++){const b=el('button','',String(n));b.type='button';b.setAttribute('aria-label','통증 '+n);b.onclick=()=>pick('통증 '+n+'/10',String(n)+' / 10');pb.append(b);}
+}
+function openSheet(){
+  const l=L();let items=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!items.length)items=log.filter(e=>e.qt&&e.lang===lang);
+  const d=new Date();$('sheetTitle').textContent=l.flag+' '+l.nat+' · '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const box=$('sheet');box.textContent='';
+  if(!items.length){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));}
+  items.forEach(e=>{const it=el('div','it');const f=el('p','f',e.qt);f.dir='auto';it.append(f,el('p','k',e.q));box.append(it);});
+  $('sheetBox').hidden=false;$('sheetBox').scrollTop=0;
+}
+$('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 function renderPhrases(){
@@ -588,7 +627,7 @@ $('clearLog').onclick=()=>{const b=$('clearLog');
   if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
   armed=false;log=[];renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
 
-renderLangs();renderCats();renderPhrases();renderLog();renderCur();ui();loadVoices();
+renderLangs();renderCats();renderPhrases();renderReply();renderLog();renderCur();ui();loadVoices();
 try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
