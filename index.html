@@ -226,15 +226,24 @@ function badge(id,label,state){const b=$(id);b.className='badge'+(state==='in'?'
 
 /* ---------- 음성 합성 ---------- */
 function loadVoices(){try{voices=window.speechSynthesis?speechSynthesis.getVoices():[];}catch(e){voices=[];}}
+let keepUtter=null,speechUnlocked=false;
+function unlockSpeech(){if(speechUnlocked||!window.speechSynthesis)return;speechUnlocked=true;
+  try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;keepUtter=u;speechSynthesis.speak(u);}catch(e){}}
 function speak(text,code){return new Promise(res=>{
+  if(!voices.length)loadVoices();
   let v=null;try{v=voices.find(x=>x.lang&&x.lang.toLowerCase().replace('_','-').startsWith(code));}catch(e){}
   if(!v||!window.speechSynthesis)return res(gtts(text,code));
-  let done=false;const fin=()=>{if(!done){done=true;res(true);}};
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.voice=v;u.lang=v.lang;u.rate=.92;u.onend=fin;u.onerror=fin;
-    speechSynthesis.speak(u);setTimeout(fin,2500+text.length*160);}catch(e){fin();}
+  let done=false,started=false;const fin=ok=>{if(!done){done=true;res(ok);}};
+  try{
+    if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);keepUtter=u;u.voice=v;u.lang=v.lang;u.rate=.92;
+    u.onstart=()=>{started=true;};u.onend=()=>fin(true);u.onerror=()=>{if(started)fin(true);else{done=true;res(gtts(text,code));}};
+    speechSynthesis.speak(u);try{speechSynthesis.resume();}catch(e){}
+    setTimeout(()=>{if(!started&&!done){done=true;try{speechSynthesis.cancel();}catch(e){}res(gtts(text,code));}},2500);
+    setTimeout(()=>fin(true),4000+text.length*200);
+  }catch(e){fin(false);}
 });}
 
-const within=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
 /* 기기에 음성이 없는 언어: 구글 번역의 읽어주기 음성을 받아서 재생 (외부 전송) */
 const player=new Audio();let playerUnlocked=false;
 function unlockPlayer(){if(playerUnlocked)return;playerUnlocked=true;try{player.src='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';const p=player.play();p&&p.catch(()=>{});}catch(e){}}
@@ -436,7 +445,7 @@ function stop(){running=false;busy=false;abortRec();try{speechSynthesis.cancel()
 function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();listen();}
 
 /* ---------- 이벤트 ---------- */
-$('go').onclick=()=>{unlockPlayer();running?stop():start();};
+$('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('flip').onclick=flip;
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
 $('strict').onchange=()=>{if(running)stop();};
@@ -457,7 +466,7 @@ function renderPhrases(){
   $('phraseNote').textContent=pre?'미리 넣은 번역입니다 (원어민 검수 전).':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
   P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';
     b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
-    b.onclick=async()=>{if(busy)return;abortRec();busy=true;ui();
+    b.onclick=async()=>{if(busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
       let t=pre?p[2+l.col]:phraseCache[lang+'|'+p[1]];
       if(!t){status('통역 중…');try{t=await translate(p[1],'ko',lang);phraseCache[lang+'|'+p[1]]=t;}
         catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return;}}
