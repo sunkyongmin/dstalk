@@ -55,6 +55,30 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .seg button[aria-pressed="true"]{background:var(--accent-soft);font-weight:700}
 .bar{display:grid;grid-template-columns:1fr;gap:8px}
 .turn{cursor:pointer}
+.reply.x2{grid-template-columns:repeat(2,1fr)}
+.reply.x5{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.reply.x5 .f,.reply.x2 .f{font-size:15px}
+.guide{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px}
+.guide .gq{min-width:0}
+.guide small{display:block;font-size:12px;color:var(--muted)}
+.guide b{display:block;font-size:15px;overflow-wrap:anywhere}
+.guide .nav{border:1px solid var(--line);background:var(--bg);border-radius:10px;min-width:44px;min-height:44px;font-size:16px}
+.guide .gbtns{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;gap:8px}
+.guide .go{min-height:46px;padding:8px;font-size:16px}
+#tpl{background:var(--surface);color:var(--ink);margin-bottom:8px}
+.trow{display:grid;grid-template-columns:minmax(60px,1fr) auto auto;gap:6px;align-items:center;padding:4px 0;font-size:15px}
+.trow input[type=number]{width:54px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 6px;min-height:42px}
+.trow select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 6px;min-height:42px}
+.trow .nums{display:flex;gap:4px;align-items:center}
+.tchk{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:15px}
+.tchk input{width:22px;height:22px}
+.bodies{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:520px;margin:0 auto;width:100%}
+.bodies svg{width:100%;height:auto;display:block}
+.bodies .part{fill:var(--surface);stroke:var(--muted);stroke-width:1.5;cursor:pointer}
+.bodies .part.on{fill:var(--live);stroke:var(--live)}
+.bodies .face{fill:none;stroke:var(--muted);stroke-width:1.5;pointer-events:none}
+.bodies p{text-align:center;margin:0;font-size:13px;color:var(--muted)}
+#bodySel{font-size:18px;font-weight:700;min-height:28px;margin:0;text-align:center}
 .reply{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
 .reply button{background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:58px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0}
 .reply .f{font-size:17px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
@@ -132,6 +156,18 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="sheet" id="sheet"></div>
   </div>
 </div>
+<div class="picker" id="bodyBox" hidden>
+  <div class="picker-in">
+    <div class="picker-head"><p>🧍 👆</p><button class="sec" id="bodyClose" type="button">닫기 ✕</button></div>
+    <p id="bodySel"></p>
+    <div class="bodies">
+      <div><svg id="bodyF" viewBox="0 0 120 256" role="group" aria-label="몸 앞면"></svg><p>앞</p></div>
+      <div><svg id="bodyB" viewBox="0 0 120 256" role="group" aria-label="몸 뒷면"></svg><p>뒤</p></div>
+    </div>
+    <div class="btnrow"><button class="go" id="bodyDone" type="button" style="flex:1">✓ OK</button><button class="sec" id="bodyReset" type="button">↺</button></div>
+    <p class="note">환자가 아픈 곳을 모두 누른 뒤 OK를 누르게 하세요. 좌우는 환자 몸 기준으로 기록됩니다.</p>
+  </div>
+</div>
 <div class="wrap">
   <h1>문진 및 설명 통역</h1>
   <div class="langrow">
@@ -156,10 +192,22 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   </div>
   <p class="status" id="status" aria-live="polite">시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.</p>
 
+  <div class="guide" id="guide">
+    <button class="nav" id="gPrev" type="button" aria-label="이전 질문">◀</button>
+    <div class="gq"><small id="gNo"></small><b id="gQ"></b></div>
+    <button class="nav" id="gNext" type="button" aria-label="다음 질문으로 건너뛰기">▶</button>
+    <div class="gbtns"><button class="go" id="gAsk" type="button">이 질문 하기</button><button class="sec" id="gBody" type="button">🧍 아픈 곳 그림</button></div>
+  </div>
+
   <div class="qa">
     <div class="turn q" id="panKo">
       <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="hint" id="koHint">눌러서 한국어 듣기</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <div id="draftBox" hidden>
+        <details id="tpl">
+          <summary>검사 결과를 입력해서 설명 문장 만들기</summary>
+          <div id="tplRows"></div>
+          <div class="btnrow"><button class="sec" id="tplMake" type="button">↓ 설명 문장 만들기</button><button class="sec" id="tplReset" type="button">입력 비우기</button></div>
+        </details>
         <textarea id="draft" rows="3" aria-label="설명할 내용" placeholder="말하면 여기에 한국어로 쌓입니다. 직접 고치거나 입력해도 됩니다."></textarea>
         <div class="btnrow">
           <button class="go" id="sendDraft" type="button" style="flex:1">통역해서 읽어주기</button>
@@ -181,6 +229,8 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <div class="reply" id="reply"></div>
       <div class="painlab"><span>0 🙂</span><span id="painTitle">0 – 10</span><span>😣 10</span></div>
       <div class="pain" id="pain"></div>
+      <div class="reply x2" id="replyDeg"></div>
+      <div class="reply x5" id="replyWhen"></div>
       <p class="wait" id="aWait">질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.</p>
     </div>
   </div>
@@ -244,6 +294,13 @@ const LANGS=[
  {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
 ];
 const YN={"en": ["Yes", "No", "I don't know"], "zh": ["是", "不是", "不知道"], "ru": ["Да", "Нет", "Не знаю"], "mn": ["Тийм", "Үгүй", "Мэдэхгүй"], "my": ["ဟုတ်ကဲ့", "မဟုတ်ဘူး", "မသိပါ"], "km": ["បាទ / ចាស", "ទេ", "មិនដឹងទេ"], "vi": ["Có", "Không", "Không biết"], "th": ["ใช่", "ไม่ใช่", "ไม่ทราบ"], "uz": ["Ha", "Yoʻq", "Bilmayman"], "ne": ["हो", "होइन", "थाहा छैन"], "fil": ["Oo", "Hindi", "Hindi ko alam"], "id": ["Ya", "Tidak", "Tidak tahu"], "bn": ["হ্যাঁ", "না", "জানি না"], "si": ["ඔව්", "නැහැ", "දන්නේ නැහැ"], "ur": ["جی ہاں", "نہیں", "معلوم نہیں"], "ky": ["Ооба", "Жок", "Билбейм"], "lo": ["ແມ່ນ", "ບໍ່", "ບໍ່ຮູ້"], "fr": ["Oui", "Non", "Je ne sais pas"], "es": ["Sí", "No", "No lo sé"], "ar": ["نعم", "لا", "لا أعرف"], "kk": ["Иә", "Жоқ", "Білмеймін"], "hi": ["हाँ", "नहीं", "पता नहीं"], "ta": ["ஆம்", "இல்லை", "தெரியாது"], "pt": ["Sim", "Não", "Não sei"], "de": ["Ja", "Nein", "Ich weiß nicht"], "it": ["Sì", "No", "Non lo so"], "ja": ["はい", "いいえ", "わかりません"]};
+const EXTRA={"en": ["A little", "A lot", "Today", "Yesterday", "2–3 days ago", "About a week ago", "More than a month"], "zh": ["一点", "很多", "今天", "昨天", "两三天前", "大约一周前", "一个月以上"], "ru": ["Немного", "Сильно", "Сегодня", "Вчера", "2–3 дня назад", "Около недели назад", "Больше месяца"], "mn": ["Бага зэрэг", "Их", "Өнөөдөр", "Өчигдөр", "2–3 хоногийн өмнө", "Долоо хоногийн өмнө", "Нэг сараас дээш"], "my": ["နည်းနည်း", "အများကြီး", "ဒီနေ့", "မနေ့က", "လွန်ခဲ့တဲ့ ၂-၃ ရက်က", "လွန်ခဲ့တဲ့ တစ်ပတ်လောက်က", "တစ်လကျော်"], "km": ["បន្តិច", "ច្រើន", "ថ្ងៃនេះ", "ម្សិលមិញ", "២-៣ ថ្ងៃមុន", "ប្រហែលមួយសប្តាហ៍មុន", "ជាងមួយខែ"], "vi": ["Một chút", "Nhiều", "Hôm nay", "Hôm qua", "2–3 ngày trước", "Khoảng một tuần trước", "Hơn một tháng"]};
+const EXTRA_EN=['A little','A lot','Today','Yesterday','2-3 days ago','About a week ago','More than a month'];
+const EXTRA_KO=['조금','많이','오늘','어제','2~3일 전','일주일쯤 전','한 달 이상'];
+const GUIDE=[['주증상','어디가 불편해서 오셨어요?'],['아픈 부위','아픈 곳을 손으로 가리켜 주세요.'],['발병 시기','언제부터 시작됐어요?'],['통증 정도','통증이 얼마나 심한가요? 0에서 10 중에서 골라 주세요.'],['발열','열이 났어요?'],['기저질환','고혈압이나 당뇨가 있어요?'],['복용약','지금 먹는 약이 있어요?'],['알레르기','약이나 음식에 알레르기가 있어요?'],['수술력','수술받은 적이 있어요?'],['임신 가능성','임신했을 가능성이 있어요?'],['흡연·음주','담배를 피우거나 술을 마셔요?']];
+const TPL=[['bp','혈압',['정상','높음','낮음'],2],['glu','혈당',['정상','높음'],1],['chol','콜레스테롤',['정상','높음'],0],['hb','빈혈',['없음','있음'],0],['liver','간 검사',['정상','높음'],0],['kid','콩팥 검사',['정상','이상'],0],['ua','소변 검사',['정상','이상'],0],['cxr','가슴 엑스레이',['정상','이상'],0],['ecg','심전도',['정상','이상'],0]];
+const TPL_S={bp:{정상:'혈압은 정상입니다.',높음:'혈압이 높습니다.',낮음:'혈압이 낮습니다.'},glu:{정상:'혈당은 정상입니다.',높음:'혈당이 높습니다.'},chol:{정상:'콜레스테롤은 정상입니다.',높음:'콜레스테롤이 높습니다.'},hb:{없음:'빈혈은 없습니다.',있음:'빈혈이 있습니다.'},liver:{정상:'간 검사 결과는 정상입니다.',높음:'간 검사 결과가 정상보다 높습니다.'},kid:{정상:'콩팥 검사 결과는 정상입니다.',이상:'콩팥 검사 결과가 정상이 아닙니다.'},ua:{정상:'소변 검사 결과는 정상입니다.',이상:'소변 검사 결과가 정상이 아닙니다.'},cxr:{정상:'가슴 엑스레이는 정상입니다.',이상:'가슴 엑스레이 검사에서 이상이 발견되었습니다.'},ecg:{정상:'심전도는 정상입니다.',이상:'심전도 검사에서 이상이 발견되었습니다.'}};
+const TPL_X=[['re','병원 재검사 권유','병원에 가서 다시 검사를 받으세요.'],['med','약 복용 안내','약을 매일 빠뜨리지 말고 드셔야 합니다.'],['life','생활습관 안내','소금을 적게 드시고 운동을 하세요.']];
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
@@ -569,7 +626,7 @@ const INTRO='시작을 누르면 의료진의 질문(한국어)부터 듣습니�
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
-  cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();
+  cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();renderGuide();
   side='ko';ui();if(running)switchListen();else status(m==='tell'?'':INTRO);}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
@@ -582,7 +639,7 @@ function renderLangs(){
 }
 $('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;const l=L();try{localStorage.setItem('dstalk-lang',lang);}catch(x){}
   ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
-  badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();renderReply();ui();
+  badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';gi=0;renderGuide();renderPhrases();renderReply();loadExtra();ui();
   status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':(mode==='tell'?'':'시작을 누르면 의료진의 질문부터 듣습니다.'));};
 function renderFlags(){
   const box=$('flags');box.textContent='';
@@ -621,22 +678,92 @@ $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
+async function askPhrase(ko,topic){
+  if(busy)return false;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
+  const l=L(),p=P.find(x=>x[1]===ko),pre=l.col!=null&&p&&p.length>2;
+  let t=pre?p[2+l.col]:phraseCache[lang+'|'+ko];
+  if(!t){status('통역 중…');try{t=await translate(prepKo(ko),'ko',lang);phraseCache[lang+'|'+ko]=t;}
+    catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return false;}}
+  const c=ask(ko,t);c.topic=topic||'';if(pre){c.back='미리 넣은 문구';renderCur();}
+  if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();if(!running)status('');listen();return true;
+}
 function renderPhrases(){
   const box=$('phrases');box.textContent='';const l=L();const pre=l.col!=null&&cat!=='검사결과';
   $('phraseNote').textContent=pre?'미리 넣은 번역입니다 (원어민 검수 전).':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
   P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';
     b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
-    b.onclick=async()=>{if(busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
-      let t=pre?p[2+l.col]:phraseCache[lang+'|'+p[1]];
-      if(!t){status('통역 중…');try{t=await translate(prepKo(p[1]),'ko',lang);phraseCache[lang+'|'+p[1]]=t;}
-        catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return;}}
-      const c=ask(p[1],t);if(pre){c.back='미리 넣은 문구';renderCur();}
-      if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();listen();};
-    box.append(b);});
+    b.onclick=()=>askPhrase(p[1]);box.append(b);});
 }
+/* ---------- 문진 순서 ---------- */
+let gi=0;
+function renderGuide(){$('guide').hidden=mode!=='ask';const g=GUIDE[gi];$('gNo').textContent='문진 순서 '+(gi+1)+'/'+GUIDE.length+' · '+g[0];$('gQ').textContent=g[1];$('gPrev').disabled=gi===0;$('gNext').disabled=gi===GUIDE.length-1;}
+$('gPrev').onclick=()=>{if(gi>0)gi--;renderGuide();};
+$('gNext').onclick=()=>{if(gi<GUIDE.length-1)gi++;renderGuide();};
+$('gAsk').onclick=async()=>{const g=GUIDE[gi];if(await askPhrase(g[1],g[0])){if(gi<GUIDE.length-1)gi++;renderGuide();}};
+/* ---------- 아픈 곳 그림 ---------- */
+const BODY_F=[['머리','c',60,20,16],['목','r',53,36,14,11],['가슴','r',36,48,48,36],['윗배','r',38,85,44,26],['아랫배','r',38,112,44,26],['오른팔','r',17,50,17,84],['왼팔','r',86,50,17,84],['오른다리','r',38,140,21,112],['왼다리','r',61,140,21,112]];
+const BODY_B=[['뒷머리','c',60,20,16],['목 뒤','r',53,36,14,11],['등','r',36,48,48,46],['허리','r',38,95,44,22],['엉덩이','r',38,118,44,21],['왼팔','r',17,50,17,84],['오른팔','r',86,50,17,84],['왼다리','r',38,140,21,112],['오른다리','r',61,140,21,112]];
+let bodySel=[];
+function drawBody(id,parts,face){
+  const NS='http://www.w3.org/2000/svg',svg=$(id);svg.textContent='';
+  parts.forEach(p=>{const key=(face?'':'(뒤) ')+p[0];let e;
+    if(p[1]==='c'){e=document.createElementNS(NS,'circle');e.setAttribute('cx',p[2]);e.setAttribute('cy',p[3]);e.setAttribute('r',p[4]);}
+    else{e=document.createElementNS(NS,'rect');e.setAttribute('x',p[2]);e.setAttribute('y',p[3]);e.setAttribute('width',p[4]);e.setAttribute('height',p[5]);e.setAttribute('rx',7);}
+    e.setAttribute('class','part'+(bodySel.includes(key)?' on':''));e.setAttribute('role','button');e.setAttribute('aria-label',key);
+    e.addEventListener('click',()=>{const i=bodySel.indexOf(key);if(i>=0)bodySel.splice(i,1);else bodySel.push(key);renderBody();});svg.append(e);});
+  if(face){const f=document.createElementNS(NS,'path');f.setAttribute('d','M54 17v3 M66 17v3 M54 26q6 5 12 0');f.setAttribute('class','face');svg.append(f);}
+}
+function renderBody(){drawBody('bodyF',BODY_F,true);drawBody('bodyB',BODY_B,false);$('bodySel').textContent=bodySel.join(', ');}
+function openBody(){bodySel=[];renderBody();$('bodyBox').hidden=false;$('bodyBox').scrollTop=0;}
+$('gBody').onclick=openBody;
+$('bodyClose').onclick=()=>{$('bodyBox').hidden=true;};
+$('bodyReset').onclick=()=>{bodySel=[];renderBody();};
+$('bodyDone').onclick=()=>{$('bodyBox').hidden=true;if(!bodySel.length)return;answer('아픈 곳: '+bodySel.join(', '),'🧍');const c=cur();if(c&&!c.topic)c.topic='아픈 부위';if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();};
+/* ---------- 검사 결과 입력 ---------- */
+function renderTpl(){
+  const box=$('tplRows');box.textContent='';
+  TPL.forEach(([id,label,opts,n])=>{const r=el('div','trow');r.append(el('label','',label));
+    const nums=el('div','nums');
+    for(let i=0;i<n;i++){const inp=el('input');inp.type='number';inp.inputMode='numeric';inp.id='t_'+id+'_'+i;inp.setAttribute('aria-label',label+(n===2?(i?' 이완기':' 수축기'):' 수치'));nums.append(inp);if(n===2&&i===0)nums.append(el('span','','/'));}
+    r.append(nums);
+    const sel=el('select');sel.id='t_'+id;sel.setAttribute('aria-label',label+' 판정');sel.append(el('option','','선택 안 함'));opts.forEach(o=>sel.append(el('option','',o)));r.append(sel);box.append(r);});
+  TPL_X.forEach(([id,label])=>{const r=el('label','tchk');const c=el('input');c.type='checkbox';c.id='tx_'+id;r.append(c,el('span','',label));box.append(r);});
+}
+function tplSentences(){
+  const out=[];
+  TPL.forEach(([id,label,opts,n])=>{const v=[];for(let i=0;i<n;i++)v.push($('t_'+id+'_'+i).value.trim());const j=$('t_'+id).value;
+    if(id==='bp'&&v[0]&&v[1])out.push('혈압은 '+v[0]+'/'+v[1]+'입니다.');
+    if(id==='glu'&&v[0])out.push('혈당은 '+v[0]+'입니다.');
+    if(TPL_S[id][j])out.push(TPL_S[id][j]);});
+  TPL_X.forEach(([id,label,sen])=>{if($('tx_'+id).checked)out.push(sen);});
+  return out;
+}
+$('tplMake').onclick=()=>{const a=tplSentences();if(!a.length)return;const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+a.join(' ');d.scrollTop=d.scrollHeight;$('tpl').open=false;d.scrollIntoView({block:'center'});};
+$('tplReset').onclick=renderTpl;
+/* ---------- 정도·기간 응답 버튼 ---------- */
+let extraCache={};
+async function loadExtra(){
+  const id=lang;let x=EXTRA[id]||extraCache[id];
+  if(!x){try{x=JSON.parse(localStorage.getItem('dstalk-x-'+id)||'null');}catch(e){}}
+  if(!x&&!$('strict').checked){try{
+    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl='+gcode(id)+'&q='+encodeURIComponent(EXTRA_EN.join('\n')));
+    const j=await r.json();const a=(j[0]||[]).map(s=>s&&s[0]||'').join('').split('\n').map(t=>t.trim()).filter(Boolean);
+    if(a.length===EXTRA_EN.length){x=a;try{localStorage.setItem('dstalk-x-'+id,JSON.stringify(a));}catch(e){}}
+  }catch(e){}}
+  if(x)extraCache[id]=x;
+  if(id!==lang)return;
+  const fill=(boxId,from,to)=>{const box=$(boxId);box.textContent='';box.hidden=!x;if(!x)return;
+    for(let i=from;i<to;i++){const b=el('button');b.type='button';const sp=el('span','f',x[i]);sp.dir='auto';b.append(sp,el('span','k',EXTRA_KO[i]));b.onclick=()=>replyPick(EXTRA_KO[i],x[i]);box.append(b);}};
+  fill('replyDeg',0,2);fill('replyWhen',2,7);
+}
+function replyPick(k,f){if(busy)return;answer(k,f);if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();}
 $('copyLog').onclick=async()=>{
   if(!log.some(e=>e.q||e.a))return;const b=$('copyLog');
-  const txt='[외국인 환자 문진 · 기계 통역 사용 · 언어: '+L().ko+']\n'+log.filter(e=>e.q||e.a).map(e=>(e.q?'의료진: '+e.q:'')+(e.a||e.kind!=='tell'?(e.q?'\n':'')+'환자: '+(e.a||'(대답 없음)'):'')).join('\n');
+  const ents=log.filter(e=>e.q||e.a),tp=ents.filter(e=>e.topic),etc=ents.filter(e=>!e.topic&&e.kind!=='tell'),tell=ents.filter(e=>!e.topic&&e.kind==='tell');
+  let txt='[외국인 환자 · 기계 통역 사용 · 언어: '+L().ko+']';
+  if(tp.length)txt+='\n'+tp.map(e=>e.topic+': '+(e.a||'(대답 없음)')).join('\n');
+  if(etc.length)txt+='\n[기타 문답]\n'+etc.map(e=>(e.q?'의료진: '+e.q+'\n':'')+'환자: '+(e.a||'(대답 없음)')).join('\n');
+  if(tell.length)txt+='\n[설명한 내용]\n'+tell.map(e=>(e.q?'- '+e.q:'')+(e.a?(e.q?'\n':'')+'  환자: '+e.a:'')).join('\n');
   try{await navigator.clipboard.writeText(txt);b.textContent='복사했습니다';}
   catch(e){const a=$('copyArea');a.hidden=false;a.value=txt;a.focus();a.select();b.textContent='아래 글을 복사하세요';}
   setTimeout(()=>{b.textContent='차트용으로 복사';},2500);
@@ -644,9 +771,9 @@ $('copyLog').onclick=async()=>{
 let armed=false;
 $('clearLog').onclick=()=>{const b=$('clearLog');
   if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
-  armed=false;log=[];renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
+  armed=false;log=[];gi=0;renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
 
-renderLangs();renderCats();renderPhrases();renderReply();renderLog();renderCur();ui();loadVoices();
+renderLangs();renderCats();renderPhrases();renderReply();loadExtra();renderGuide();renderTpl();renderLog();renderCur();ui();loadVoices();
 try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
