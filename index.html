@@ -535,12 +535,13 @@ async function prepare(){
 function ui(){
   const l=L();
   $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
-  const lk=running&&!busy&&side==='ko',lp=running&&!busy&&side==='pt';
+  const paused=mode==='tell'&&$('tpl').open;const lk=running&&!busy&&side==='ko'&&!paused,lp=running&&!busy&&side==='pt';
   $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "번역문 생성"을 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy&&paused&&side==='ko')status('검사 결과를 입력하는 동안에는 듣지 않습니다.');
+  else if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "번역문 생성"을 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
@@ -603,6 +604,7 @@ function ui2err(){const s=$('status').textContent;ui();if(running)status(s,true)
 /* ---------- 음성 인식 루프 ---------- */
 function listen(){
   if(!running||busy||!SR||switching)return;
+  if(mode==='tell'&&side==='ko'&&$('tpl').open)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
   let finalText='';
   const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
@@ -666,7 +668,7 @@ $('sayBtn').onclick=async()=>{if(speaking){stopSpeak();return;}const c=cur();if(
   const ok=await speak(c.qt,lang);c.mute=!ok;busy=false;renderCur();ui();if(!running)status('');listen();};
 function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){unlockPlayer();unlockSpeech();start(target);return;}if(side!==target)flip();}
 [['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
-  p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input'))return;listenTo(t);});
+  p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input,select,label,details,#draftBox'))return;listenTo(t);});
   p.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===p)listenTo(t);});});
 $('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();if(busy)return;const pend=curInterim;abortRec();if(pend)appendDraft(pend);const t=$('draft').value.trim();if(!t){listen();return;}$('draft').value='';handle(t,'ko',true);};
 $('clearDraft').onclick=()=>{$('draft').value='';curInterim='';$('koInterim').textContent='';};
@@ -850,6 +852,7 @@ function tplPrepare(){
 $('tplMake').onclick=()=>{const a=tplPrepare();if(!a.length)return;const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+a.join(' ');d.scrollTop=d.scrollHeight;$('tpl').open=false;d.scrollIntoView({block:'center'});};
 $('tplGo').onclick=()=>{if(busy)return;unlockPlayer();unlockSpeech();const a=tplPrepare();if(!a.length)return;$('tpl').open=false;abortRec();handle(a.join(' '),'ko',true);$('panKo').scrollIntoView({block:'start'});};
 $('tplReset').onclick=()=>renderTpl();
+$('tpl').addEventListener('toggle',()=>{if($('tpl').open){const pend=curInterim;abortRec();if(pend&&side==='ko')appendDraft(pend);ui();}else{ui();listen();}});
 /* ---------- 정도·기간 응답 버튼 ---------- */
 let extraCache={};
 async function loadExtra(){
