@@ -63,7 +63,13 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .pain button{background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:44px;padding:0;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .painlab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
 .sheet{display:flex;flex-direction:column;gap:14px}
-.sheet .it{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.sheet .it{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;cursor:pointer}
+.sheet .it input{width:26px;height:26px;margin:6px 0 0;accent-color:var(--accent)}
+.sheet .it>div{min-width:0}
+.sheet .it.off{opacity:.45}
+.sheet.only .it.off{display:none}
+.sheet.only .it input{display:none}
+.sheet.only .it{grid-template-columns:1fr;cursor:default}
 .sheet .it .f{font-size:21px;font-weight:600;line-height:1.6;margin:0;overflow-wrap:anywhere}
 .sheet .it .k{font-size:13px;color:var(--muted);margin:4px 0 0}
 .turn .hint{font-weight:400;opacity:.7;font-size:12px}
@@ -118,7 +124,11 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 <div class="picker" id="sheetBox" hidden>
   <div class="picker-in">
     <div class="picker-head"><p id="sheetTitle"></p><button class="sec" id="sheetClose" type="button">닫기 ✕</button></div>
-    <p class="note">환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요. 기계 번역입니다.</p>
+    <div class="btnrow">
+      <button class="go" id="sheetOnly" type="button" style="flex:1;min-height:48px;padding:8px">고른 문장만 환자에게 보여주기</button>
+      <button class="sec" id="sheetNone" type="button">전체 해제</button>
+    </div>
+    <p class="note" id="sheetNote"></p>
     <div class="sheet" id="sheet"></div>
   </div>
 </div>
@@ -189,7 +199,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <h2>지난 문답 <span id="logN"></span></h2>
   <div class="btnrow">
-    <button class="sec" id="sheetOpen" type="button">📄 환자용 요약</button>
+    <button class="sec" id="sheetOpen" type="button">📄 환자에게 보여줄 설명</button>
     <button class="sec" id="copyLog" type="button">차트용으로 복사</button>
     <button class="sec" id="clearLog" type="button">기록 지우기</button>
   </div>
@@ -591,14 +601,23 @@ function renderReply(){
   const pb=$('pain');pb.textContent='';
   for(let n=0;n<=10;n++){const b=el('button','',String(n));b.type='button';b.setAttribute('aria-label','통증 '+n);b.onclick=()=>pick('통증 '+n+'/10',String(n)+' / 10');pb.append(b);}
 }
-function openSheet(){
-  const l=L();let items=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!items.length)items=log.filter(e=>e.qt&&e.lang===lang);
+let sheetOnly=false;
+function sheetItems(){const a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');return a.length?a:log.filter(e=>e.qt&&e.lang===lang);}
+function renderSheet(){
+  const l=L(),items=sheetItems();
   const d=new Date();$('sheetTitle').textContent=l.flag+' '+l.nat+' · '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  const box=$('sheet');box.textContent='';
-  if(!items.length){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));}
-  items.forEach(e=>{const it=el('div','it');const f=el('p','f',e.qt);f.dir='auto';it.append(f,el('p','k',e.q));box.append(it);});
-  $('sheetBox').hidden=false;$('sheetBox').scrollTop=0;
+  const box=$('sheet');box.textContent='';box.classList.toggle('only',sheetOnly);
+  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'고른 문장만 환자에게 보여주기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!items.length;
+  const n=items.filter(e=>e.keep!==false).length;
+  $('sheetNote').textContent=!items.length?'':sheetOnly?'환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요. 기계 번역입니다.':'환자에게 남길 문장만 체크해 두세요. 지금 '+n+'개를 골랐습니다.';
+  if(!items.length){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));return;}
+  items.forEach((e,i)=>{const it=el('label','it'+(e.keep===false?' off':''));
+    const cb=el('input');cb.type='checkbox';cb.id='keep'+i;cb.checked=e.keep!==false;cb.onchange=()=>{e.keep=cb.checked;renderSheet();};
+    const tx=el('div');const f=el('p','f',e.qt);f.dir='auto';tx.append(f,el('p','k',e.q));it.append(cb,tx);box.append(it);});
 }
+function openSheet(){sheetOnly=false;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;}
+$('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
+$('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
