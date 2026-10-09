@@ -150,6 +150,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .turn{padding:14px;display:flex;flex-direction:column;gap:6px;min-height:120px;min-width:0;border:2px solid transparent;background:var(--surface)}
 .turn.q{background:var(--patient-bg);color:var(--patient-ink)}
 .turn.a{border-top-color:var(--line)}
+.turn.typing{border-color:var(--accent)}
 .turn.listening{border-color:var(--live)}
 .turn .tag{font-size:13px;font-weight:700;letter-spacing:.02em;display:flex;justify-content:space-between;gap:8px}
 .turn .mic{color:var(--live);font-weight:700}
@@ -562,6 +563,8 @@ function ui(){
   $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
   const paused=mode==='tell'&&$('tpl').open;const lk=running&&!busy&&side==='ko'&&!paused,lp=running&&!busy&&side==='pt';
   $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
+  $('panKo').classList.toggle('typing',!running&&side==='ko');$('panPt').classList.toggle('typing',!running&&side==='pt');
+  $('koHint').textContent=running?'눌러서 한국어 듣기':'눌러서 한국어 입력';$('ptHint').textContent=running?'눌러서 환자 말 듣기':'눌러서 환자 언어 입력';
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
@@ -691,7 +694,7 @@ function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('sayBtn').onclick=async()=>{if(speaking){stopSpeak();return;}const c=cur();if(!c||!c.qt||busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();status('🔊 '+L().ko+'로 읽는 중…');
   const ok=await speak(c.qt,lang);c.mute=!ok;busy=false;renderCur();ui();if(!running)status('');listen();};
-function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){unlockPlayer();unlockSpeech();start(target);return;}if(side!==target)flip();}
+function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){side=target;ptSince=Date.now();ui();$('typed').focus({preventScroll:true});return;}if(side!==target)flip();}
 [['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
   p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input,select,label,details,#draftBox'))return;listenTo(t);});
   p.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===p)listenTo(t);});});
