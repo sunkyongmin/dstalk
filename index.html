@@ -713,7 +713,7 @@ function renderFlags(){
   LANGS.forEach(l=>{const b=el('button','flagbtn');b.type='button';b.lang=l.id;
     b.append(el('span','fl',l.flag),el('span','nat',l.nat),el('span','kor',l.ko));
     b.onclick=()=>{unlockPlayer();unlockSpeech();$('picker').hidden=true;
-      if(l.id!==lang||!running){$('langs').value=l.id;$('langs').onchange({target:$('langs')});start();}};
+      if(l.id!==lang){$('langs').value=l.id;$('langs').onchange({target:$('langs')});}if(mode==='ask'&&!running)start();else if(mode==='tell')status(l.ko+'로 바꿨습니다.');};
     box.append(b);});
 }
 $('cautionOk').onclick=()=>{$('cautionFull').hidden=true;$('cautionMini').hidden=false;};
