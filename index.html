@@ -49,6 +49,10 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .badge.in{color:var(--ok);border-color:var(--ok)}
 .badge.out{color:var(--ext);border-color:var(--ext);background:var(--ext-soft);font-weight:600}
 .strict{display:flex;gap:6px;align-items:center;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:8px 6px;min-height:48px;font-size:15px;line-height:1.3}
+.seg button small{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);font-weight:700}
 .bar{display:grid;grid-template-columns:1fr auto;gap:8px}
 .go{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;min-height:56px}
 .go.on{background:var(--live);color:#fff}
@@ -109,6 +113,11 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <label class="strict"><input type="checkbox" id="strict"> 외부 전송 차단 (기기 안에서 되는 것만)</label>
   </div>
 
+  <div class="seg" role="group" aria-label="사용 방식">
+    <button type="button" id="modeAsk" aria-pressed="true">문진<small>묻고 대답 듣기</small></button>
+    <button type="button" id="modeTell" aria-pressed="false">결과 설명<small>의료진이 이어서 말하기</small></button>
+  </div>
+
   <div class="bar">
     <button class="go" id="go" type="button">통역 시작</button>
     <button class="flip" id="flip" type="button">듣는 언어 바꾸기<br><small>스페이스바</small></button>
@@ -117,7 +126,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <div class="qa">
     <div class="turn q" id="panKo">
-      <div class="tag"><span>① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
+      <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <p class="subt" id="qKo"></p>
       <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
@@ -184,7 +193,7 @@ const LANGS=[
  {id:'es',flag:'🇪🇸',ko:'스페인어',nat:'Español',sr:'es-ES',say:'Hable, por favor'},
  {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
 ];
-const CATS=['기본','증상','과거력','검진','안내'];
+const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
 ['기본','안녕하세요. 저는 의사입니다.','Hello. I am a doctor.','您好，我是医生。','Здравствуйте. Я врач.','Сайн байна уу. Би эмч байна.','မင်္ဂလာပါ။ ဆရာဝန်ပါ။','សួស្តី។ ខ្ញុំជាគ្រូពេទ្យ។','Xin chào. Tôi là bác sĩ.'],
@@ -233,11 +242,12 @@ const P=[
 ['안내','증상이 심해지면 병원에 가세요.','If your symptoms get worse, go to a hospital.','如果症状加重，请去医院。','Если станет хуже, обратитесь в больницу.','Шинж тэмдэг хүндэрвэл эмнэлэгт очоорой.','ရောဂါလက္ခဏာ ပိုဆိုးလာရင် ဆေးရုံသွားပါ။','បើអាការៈកាន់តែធ្ងន់ សូមទៅមន្ទីរពេទ្យ។','Nếu triệu chứng nặng hơn, hãy đến bệnh viện.']
 ];
 
+['검사 결과를 설명해 드리겠습니다.','검사 결과는 모두 정상입니다.','혈압이 정상입니다.','혈압이 높습니다.','혈당이 높습니다. 당뇨병일 수 있습니다.','콜레스테롤이 높습니다.','빈혈이 있습니다.','간 검사 결과가 정상보다 높습니다.','콩팥 검사 결과가 정상이 아닙니다.','소변에서 피가 나왔습니다.','소변에서 단백질이 나왔습니다.','가슴 엑스레이는 정상입니다.','가슴 엑스레이 검사에서 이상이 발견되었습니다. 병원에서 추가 검사를 받으세요.','심전도는 정상입니다.','B형 간염 바이러스가 있습니다. 병원 진료가 필요합니다.','당신은 지금 위험한 상태가 아닙니다.','병원에 가서 다시 검사를 받으세요.','약을 매일 빠뜨리지 말고 드셔야 합니다.','소금을 적게 드시고 운동을 하세요.','술과 담배를 줄이세요.','이 종이를 병원에 가져가서 보여 주세요.','궁금한 것이 있으면 물어보세요.'].forEach(k=>P.push(['검사결과',k]));
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PT_SILENCE_MS=12000;
-let lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let mode='ask',lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
 const L=()=>LANGS.find(l=>l.id===lang);
@@ -283,15 +293,21 @@ function gtts(text,code){return new Promise(res=>{
 });}
 
 /* 한국어 음성 인식 결과에는 문장부호가 없어 번역이 틀어지기 쉬움: 인사말 뒤 마침표, 질문에 물음표를 붙이고 흔한 문진 표현은 번역이 잘 되는 꼴로 바꿈 */
+const SUBJ=/^(혈압|혈당|콜레스테롤|중성지방|간 |간이|간은|콩팥|신장|소변|가슴|폐|심장|심전도|빈혈|체중|갑상선|엑스레이|초음파|요산|단백뇨|염증|검사 결과|결과)/;
+function fixKo(t){
+  t=t.replace(/(\d+)에 (\d+)/g,'$1/$2');
+  if(mode!=='tell')return t;
+  return t.split(/(?<=[.?!])\s+/).map(x=>SUBJ.test(x)&&!/[?]$/.test(x)&&!/(당신|환자분)/.test(x)?'당신의 '+x:x).join(' ');
+}
 function prepKo(t){
   t=t.trim().replace(/\s+/g,' ');
-  if(/[.?!。？！]/.test(t))return t;
+  if(/[.?!。？！]/.test(t))return fixKo(t);
   t=t.replace(/(어디가|어디) ?(아파서|아프셔서|불편해서|불편하셔서|안 ?좋아서) ?(오셨어요|오셨나요|오셨습니까|왔어요|왔나요)$/,'어디가 아프세요')
      .replace(/(어떻게|무슨 ?일로|어쩐 ?일로) ?(오셨어요|오셨나요|오셨습니까|왔어요)$/,'어디가 아프세요');
   t=t.replace(/^(안녕하세요|안녕하십니까|네|예|아니요|감사합니다|죄송합니다|잠시만요|잠깐만요) (?=\S)/,'$1. ');
   const last=t.slice(t.lastIndexOf('. ')+1);
-  const q=/(어디|언제|무엇|뭐|뭘|무슨|어떤|어떻게|어때|왜|몇|얼마|누구|누가|어느)/.test(last)||/(까요|니까|나요|가요|죠|지요|있어요|없어요|[았었였했났셨왔갔]어요|아파요|아프세요|있으세요|없으세요|계세요|인가요)$/.test(last);
-  return t+(q?'?':'.');
+  const q=/(어디|언제|무엇|뭐|뭘|무슨|어떤|어떻게|어때|왜|몇|얼마|누구|누가|어느)/.test(last)||(mode==='tell'?/(까요|니까|나요|인가요|셨어요|있으세요)$/:/(까요|니까|나요|가요|죠|지요|있어요|없어요|[았었였했났셨왔갔]어요|아파요|아프세요|있으세요|없으세요|계세요|인가요)$/).test(last);
+  return fixKo(t+(q?'?':'.'));
 }
 const normKo=x=>x.replace(/[\s.?!,]/g,'');
 function bankHit(text){const l=L();if(l.col==null)return null;const n=normKo(text);const p=P.find(p=>normKo(p[1])===n);return p?p[2+l.col]:null;}
@@ -371,10 +387,10 @@ function ui(){
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent='② 대답 · 환자 ('+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요':'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 의료진이 한국어로 이어서 말하세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
-function ask(q,qt){log.push({q,qt,back:'',a:'',at:''});renderLog();renderCur();return cur();}
+function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode});renderLog();renderCur();return cur();}
 function answer(a,at){let c=cur();if(!c||c.a){log.push({q:'',qt:'',back:'',a:'',at:''});c=cur();}c.a=a;c.at=at;renderLog();renderCur();}
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
@@ -382,13 +398,15 @@ function renderCur(){
   $('qMute').hidden=!c.mute;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
-  $('aWait').textContent=c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
+  $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 "듣는 언어 바꾸기"를 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
+  $('koTag').textContent=mode==='tell'?'① 설명 · 의료진':'① 질문 · 의료진';
 }
 function renderLog(){
   const ul=$('log');ul.textContent='';const past=log.slice(0,-1).reverse();
   past.forEach(e=>{const li=el('li');
-    if(e.q)li.append(el('span','who','질문'),el('span','',e.q),el('span','o',e.qt));
-    li.append(el('span','who p','대답'),el('span','',e.a||'(대답 없음)'));if(e.at)li.append(el('span','o',e.at));
+    const tell=e.kind==='tell';
+    if(e.q)li.append(el('span','who',tell?'설명':'질문'),el('span','',e.q),el('span','o',e.qt));
+    if(e.a||!tell){li.append(el('span','who p',tell?'환자':'대답'),el('span','',e.a||'(대답 없음)'));if(e.at)li.append(el('span','o',e.at));}
     ul.append(li);});
   $('logEmpty').hidden=past.length>0;$('logN').textContent=log.length?'(전체 '+log.length+'건)':'';
 }
@@ -406,7 +424,7 @@ async function handle(text,from){
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
       status('🔊 '+l.ko+'로 읽는 중…');
       if(!await speak(tr,l.id)){c.mute=true;renderCur();}
-      side='pt';ptSince=Date.now();
+      if(mode==='ask'){side='pt';ptSince=Date.now();}
     }else{
       $('ptInterim').textContent='';status('통역 중…');
       const tr=await translate(text,l.id,'ko');
@@ -472,6 +490,12 @@ function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();li
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('flip').onclick=flip;
+function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
+  $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
+  if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
+  cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();
+  if(side==='pt'){side='ko';abortRec();ui();listen();}else ui();}
+$('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
 $('strict').onchange=()=>{if(running)stop();};
 $('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();if(!t||busy)return;$('typed').value='';abortRec();handle(t,side);};
@@ -497,21 +521,21 @@ $('pickClose').onclick=()=>{$('picker').hidden=true;};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 function renderPhrases(){
-  const box=$('phrases');box.textContent='';const l=L();const pre=l.col!=null;
+  const box=$('phrases');box.textContent='';const l=L();const pre=l.col!=null&&cat!=='검사결과';
   $('phraseNote').textContent=pre?'미리 넣은 번역입니다 (원어민 검수 전).':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
   P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';
     b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
     b.onclick=async()=>{if(busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
       let t=pre?p[2+l.col]:phraseCache[lang+'|'+p[1]];
-      if(!t){status('통역 중…');try{t=await translate(p[1],'ko',lang);phraseCache[lang+'|'+p[1]]=t;}
+      if(!t){status('통역 중…');try{t=await translate(prepKo(p[1]),'ko',lang);phraseCache[lang+'|'+p[1]]=t;}
         catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return;}}
       const c=ask(p[1],t);if(pre){c.back='미리 넣은 문구';renderCur();}
-      if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;side='pt';ptSince=Date.now();ui();listen();};
+      if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();listen();};
     box.append(b);});
 }
 $('copyLog').onclick=async()=>{
   if(!log.some(e=>e.q||e.a))return;const b=$('copyLog');
-  const txt='[외국인 환자 문진 · 기계 통역 사용 · 언어: '+L().ko+']\n'+log.filter(e=>e.q||e.a).map(e=>(e.q?'의료진: '+e.q+'\n':'')+'환자: '+(e.a||'(대답 없음)')).join('\n');
+  const txt='[외국인 환자 문진 · 기계 통역 사용 · 언어: '+L().ko+']\n'+log.filter(e=>e.q||e.a).map(e=>(e.q?'의료진: '+e.q:'')+(e.a||e.kind!=='tell'?(e.q?'\n':'')+'환자: '+(e.a||'(대답 없음)'):'')).join('\n');
   try{await navigator.clipboard.writeText(txt);b.textContent='복사했습니다';}
   catch(e){const a=$('copyArea');a.hidden=false;a.value=txt;a.focus();a.select();b.textContent='아래 글을 복사하세요';}
   setTimeout(()=>{b.textContent='차트용으로 복사';},2500);
@@ -522,6 +546,7 @@ $('clearLog').onclick=()=>{const b=$('clearLog');
   armed=false;log=[];renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
 
 renderLangs();renderCats();renderPhrases();renderLog();renderCur();ui();loadVoices();
+try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
