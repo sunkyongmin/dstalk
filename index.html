@@ -53,7 +53,9 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .seg button{border:0;background:transparent;border-radius:9px;padding:8px 6px;min-height:48px;font-size:15px;line-height:1.3}
 .seg button small{display:block;font-size:12px;color:var(--muted);font-weight:400}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);font-weight:700}
-.bar{display:grid;grid-template-columns:1fr auto;gap:8px}
+.bar{display:grid;grid-template-columns:1fr;gap:8px}
+.turn{cursor:pointer}
+.turn .hint{font-weight:400;opacity:.7;font-size:12px}
 .go{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:14px;font-size:18px;font-weight:700;min-height:56px}
 .go.on{background:var(--live);color:#fff}
 .flip{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;min-height:56px;font-size:14px}
@@ -123,13 +125,12 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <div class="bar">
     <button class="go" id="go" type="button">통역 시작</button>
-    <button class="flip" id="flip" type="button">듣는 언어 바꾸기<br><small>스페이스바</small></button>
   </div>
   <p class="status" id="status" aria-live="polite">시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.</p>
 
   <div class="qa">
     <div class="turn q" id="panKo">
-      <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
+      <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="hint" id="koHint">눌러서 한국어 듣기</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <div id="draftBox" hidden>
         <textarea id="draft" rows="3" aria-label="설명할 내용" placeholder="말하면 여기에 한국어로 쌓입니다. 직접 고치거나 입력해도 됩니다."></textarea>
         <div class="btnrow">
@@ -145,7 +146,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
     </div>
     <div class="turn a" id="panPt">
-      <div class="tag"><span id="ptTag">② 대답 · 환자</span><span class="mic" id="ptMic" hidden>🎤</span></div>
+      <div class="tag"><span id="ptTag">② 대답 · 환자</span><span class="hint" id="ptHint">눌러서 환자 말 듣기</span><span class="mic" id="ptMic" hidden>🎤</span></div>
       <p class="main" id="aKo"></p>
       <p class="subt" id="aPt" dir="auto"></p>
       <p class="interim" id="ptInterim" dir="auto"></p>
@@ -256,7 +257,7 @@ const P=[
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const PT_SILENCE_MS=12000;
+const PT_SILENCE_MS=8000;
 let mode='ask',lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
@@ -395,7 +396,7 @@ function ui(){
   $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
   const lk=running&&!busy&&side==='ko',lp=running&&!busy&&side==='pt';
   $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
-  $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('ptMic').textContent='🎤 '+l.say;
+  $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
   if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
@@ -409,7 +410,7 @@ function renderCur(){
   $('qMute').hidden=!c.mute;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
-  $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 "듣는 언어 바꾸기"를 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
+  $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 이 칸을 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
   $('koTag').textContent=mode==='tell'?'① 설명 · 의료진':'① 질문 · 의료진';
   $('draftBox').hidden=mode!=='tell';if(mode==='tell')$('qWait').hidden=true;
 }
@@ -518,7 +519,10 @@ function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(
 
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
-$('flip').onclick=flip;
+function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){unlockPlayer();unlockSpeech();start(target);return;}if(side!==target)flip();}
+[['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
+  p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input'))return;listenTo(t);});
+  p.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===p)listenTo(t);});});
 $('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();if(busy)return;const pend=curInterim;abortRec();if(pend)appendDraft(pend);const t=$('draft').value.trim();if(!t){listen();return;}$('draft').value='';handle(t,'ko',true);};
 $('clearDraft').onclick=()=>{$('draft').value='';curInterim='';$('koInterim').textContent='';};
 const INTRO='시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.';
