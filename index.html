@@ -248,13 +248,6 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   </div>
   <p class="status" id="status" aria-live="polite">시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.</p>
 
-  <div class="guide" id="guide">
-    <button class="nav" id="gPrev" type="button" aria-label="이전 질문">◀</button>
-    <div class="gq"><small id="gNo"></small><b id="gQ"></b></div>
-    <button class="nav" id="gNext" type="button" aria-label="다음 질문으로 건너뛰기">▶</button>
-    <div class="gbtns"><button class="go" id="gAsk" type="button">이 질문 하기</button><button class="sec" id="gBody" type="button">🧍 아픈 곳 그림</button></div>
-  </div>
-
   <div class="qa">
     <div class="turn q" id="panKo">
       <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="hint" id="koHint">눌러서 한국어 듣기</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
@@ -285,6 +278,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <p class="subt" id="aPt" dir="auto"></p>
       <p class="interim" id="ptInterim" dir="auto"></p>
       <div class="reply" id="reply"></div>
+      <button class="sec" id="gBody" type="button" style="margin-top:6px">🧍 아픈 곳 그림으로 표시하기</button>
       <div class="painlab"><span>0 🙂</span><span id="painTitle">0 – 10</span><span>😣 10</span></div>
       <div class="pain" id="pain"></div>
       <div class="reply x2" id="replyDeg"></div>
@@ -805,12 +799,7 @@ function renderPhrases(){
     b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
     b.onclick=()=>askPhrase(p[1]);box.append(b);});
 }
-/* ---------- 문진 순서 ---------- */
-let gi=0;
-function renderGuide(){$('guide').hidden=mode!=='ask';const g=GUIDE[gi];$('gNo').textContent='문진 순서 '+(gi+1)+'/'+GUIDE.length+' · '+g[0];$('gQ').textContent=g[1];$('gPrev').disabled=gi===0;$('gNext').disabled=gi===GUIDE.length-1;}
-$('gPrev').onclick=()=>{if(gi>0)gi--;renderGuide();};
-$('gNext').onclick=()=>{if(gi<GUIDE.length-1)gi++;renderGuide();};
-$('gAsk').onclick=async()=>{const g=GUIDE[gi];if(await askPhrase(g[1],g[0])){if(gi<GUIDE.length-1)gi++;renderGuide();}};
+let gi=0;function renderGuide(){}
 /* ---------- 아픈 곳 그림 ---------- */
 const BODY_F=[['머리','c',60,20,16],['목','r',53,36,14,11],['가슴','r',36,48,48,36],['윗배','r',38,85,44,26],['아랫배','r',38,112,44,26],['오른팔','r',17,50,17,84],['왼팔','r',86,50,17,84],['오른다리','r',38,140,21,112],['왼다리','r',61,140,21,112]];
 const BODY_B=[['뒷머리','c',60,20,16],['목 뒤','r',53,36,14,11],['등','r',36,48,48,46],['허리','r',38,95,44,22],['엉덩이','r',38,118,44,21],['왼팔','r',17,50,17,84],['오른팔','r',86,50,17,84],['왼다리','r',38,140,21,112],['오른다리','r',61,140,21,112]];
