@@ -458,7 +458,7 @@ function ui2err(){const s=$('status').textContent;ui();if(running)status(s,true)
 
 /* ---------- 음성 인식 루프 ---------- */
 function listen(){
-  if(!running||busy||!SR)return;
+  if(!running||busy||!SR||switching)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
   let finalText='';
   const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
@@ -493,6 +493,16 @@ function listen(){
   try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
 }
 function abortRec(){recToken++;try{rec&&rec.abort();}catch(e){}rec=null;}
+/* 아이폰은 앞선 듣기가 완전히 끝나기 전에 다른 언어로 다시 시작하면 이전 언어로 계속 듣는다: 끝날 때까지 기다렸다가 시작 */
+let switching=0;
+function switchListen(){
+  const old=rec,my=++switching;recToken++;rec=null;
+  const go=()=>{if(my!==switching)return;switching=0;ui();listen();};
+  if(!old){go();return;}
+  let done=false;const fin=()=>{if(!done){done=true;setTimeout(go,/iPhone|iPad|iPod/.test(navigator.userAgent)?350:60);}};
+  try{old.addEventListener('end',fin);old.abort();}catch(e){fin();}
+  setTimeout(fin,1500);
+}
 async function start(){
   if(!SR){status('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome(PC·안드로이드)이나 Safari(아이폰)에서 열어 주세요. 글 입력과 빠른 문구는 쓸 수 있습니다.',true);return;}
   $('go').disabled=true;status('준비 중…');
@@ -504,7 +514,7 @@ async function start(){
   ui();listen();
 }
 function stop(){running=false;busy=false;abortRec();try{speechSynthesis.cancel();}catch(e){}try{player.pause();}catch(e){}ui();status('멈췄습니다.');}
-function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();listen();}
+function flip(){if(busy)return;const pend=curInterim;if(side==='ko'&&mode==='tell'&&pend)appendDraft(pend);side=side==='ko'?'pt':'ko';ptSince=Date.now()+2000;ui();status('듣는 언어를 바꾸는 중…');switchListen();}
 
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
@@ -515,7 +525,7 @@ function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
   cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();
-  if(side==='pt'){side='ko';abortRec();ui();listen();}else ui();}
+  side='ko';ui();if(running)switchListen();}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
 $('strict').onchange=()=>{if(running)stop();};
