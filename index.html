@@ -211,7 +211,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <div class="seg" role="group" aria-label="사용 방식">
     <button type="button" id="modeAsk" aria-pressed="true">문진<small>묻고 대답 듣기</small></button>
-    <button type="button" id="modeTell" aria-pressed="false">설명<small>다 말한 뒤 눌러서 통역</small></button>
+    <button type="button" id="modeTell" aria-pressed="false">설명<small>번역문 만들고 필요하면 읽기</small></button>
   </div>
 
   <div class="bar">
@@ -233,19 +233,19 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
         <details id="tpl">
           <summary>검사 결과 입력 (이상 있는 항목만 누르기)</summary>
           <div id="tplRows"></div>
-          <button class="go" id="tplGo" type="button" style="width:100%;min-height:50px;padding:8px;margin:6px 0">바로 통역하기</button>
-          <div class="btnrow"><button class="sec" id="tplMake" type="button">↓ 문장만 만들어 고치기</button><button class="sec" id="tplReset" type="button">입력 비우기</button></div>
+          <button class="go" id="tplGo" type="button" style="width:100%;min-height:50px;padding:8px;margin:6px 0">번역문 생성</button>
+          <div class="btnrow"><button class="sec" id="tplMake" type="button">↓ 한국어 문장만 만들기</button><button class="sec" id="tplReset" type="button">입력 비우기</button></div>
         </details>
         <textarea id="draft" rows="3" aria-label="설명할 내용" placeholder="말하면 여기에 한국어로 쌓입니다. 직접 고치거나 입력해도 됩니다."></textarea>
         <div class="btnrow">
-          <button class="go" id="sendDraft" type="button" style="flex:1">통역하기</button>
+          <button class="go" id="sendDraft" type="button" style="flex:1">번역문 생성</button>
           <button class="pbtn2" id="clearDraft" type="button">지우기</button>
         </div>
       </div>
       <p class="subt" id="qKo"></p>
       <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
-      <button class="pbtn2" id="sayBtn" type="button" hidden style="align-self:flex-start;min-height:46px">🔊 읽어주기</button>
+      <button class="pbtn2" id="sayBtn" type="button" hidden style="align-self:flex-start;min-height:46px">🔊 번역문 읽어주기</button>
       <p class="subt" id="qMute" hidden>🔇 이 언어는 읽어주는 음성이 없습니다. 화면을 보여주세요.</p>
       <p class="interim" id="koInterim"></p>
       <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
@@ -529,7 +529,7 @@ function ui(){
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역하기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "번역문 생성"을 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
