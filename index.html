@@ -403,17 +403,21 @@ function loadVoices(){try{voices=window.speechSynthesis?speechSynthesis.getVoice
 let keepUtter=null,speechUnlocked=false;
 function unlockSpeech(){if(speechUnlocked||!window.speechSynthesis)return;speechUnlocked=true;
   try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;keepUtter=u;speechSynthesis.speak(u);}catch(e){}}
-function speak(text,code){return new Promise(res=>{
+let speaking=false,speakStopped=false,curFin=null;
+function updSay(){const b=$('sayBtn');if(b)b.textContent=speaking?'■ 읽기 중단':'🔊 번역문 읽어주기';}
+function stopSpeak(){speakStopped=true;try{speechSynthesis.cancel();}catch(e){}try{player.pause();}catch(e){}if(curFin)curFin(true);}
+async function speak(text,code){speaking=true;speakStopped=false;updSay();try{return await speakRaw(text,code);}finally{speaking=false;curFin=null;updSay();}}
+function speakRaw(text,code){return new Promise(res=>{
   if(!voices.length)loadVoices();
   let v=null;try{v=voices.find(x=>x.lang&&x.lang.toLowerCase().replace('_','-').startsWith(code));}catch(e){}
   if(!v||!window.speechSynthesis)return res(gtts(text,code));
-  let done=false,started=false;const fin=ok=>{if(!done){done=true;res(ok);}};
+  let done=false,started=false;const fin=ok=>{if(!done){done=true;res(ok);}};curFin=fin;
   try{
     if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);keepUtter=u;u.voice=v;u.lang=v.lang;u.rate=.92;
-    u.onstart=()=>{started=true;};u.onend=()=>fin(true);u.onerror=()=>{if(started)fin(true);else{done=true;res(gtts(text,code));}};
+    u.onstart=()=>{started=true;};u.onend=()=>fin(true);u.onerror=()=>{if(started||speakStopped)fin(true);else{done=true;res(gtts(text,code));}};
     speechSynthesis.speak(u);try{speechSynthesis.resume();}catch(e){}
-    setTimeout(()=>{if(!started&&!done){done=true;try{speechSynthesis.cancel();}catch(e){}res(gtts(text,code));}},2500);
+    setTimeout(()=>{if(!started&&!done&&!speakStopped){done=true;try{speechSynthesis.cancel();}catch(e){}res(gtts(text,code));}},2500);
     setTimeout(()=>fin(true),4000+text.length*200);
   }catch(e){fin(false);}
 });}
@@ -425,7 +429,7 @@ function chunks(text,n){const out=[];let cur='';text.split(/(\s+)/).forEach(w=>{
 function gtts(text,code){return new Promise(res=>{
   if($('strict').checked)return res(false);
   const parts=chunks(text,180);let i=0,done=false;
-  const fin=ok=>{if(!done){done=true;player.onended=player.onerror=null;res(ok);}};
+  const fin=ok=>{if(!done){done=true;player.onended=player.onerror=null;res(ok);}};curFin=fin;
   const next=()=>{if(done)return;if(i>=parts.length)return fin(true);
     player.src='https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl='+gcode(code)+'&q='+encodeURIComponent(parts[i++].trim());
     const p=player.play();p&&p.catch(()=>fin(false));};
@@ -651,7 +655,7 @@ function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(
 
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
-$('sayBtn').onclick=async()=>{const c=cur();if(!c||!c.qt||busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();status('🔊 '+L().ko+'로 읽는 중…');
+$('sayBtn').onclick=async()=>{if(speaking){stopSpeak();return;}const c=cur();if(!c||!c.qt||busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();status('🔊 '+L().ko+'로 읽는 중…');
   const ok=await speak(c.qt,lang);c.mute=!ok;busy=false;renderCur();ui();if(!running)status('');listen();};
 function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){unlockPlayer();unlockSpeech();start(target);return;}if(side!==target)flip();}
 [['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
