@@ -563,11 +563,11 @@ function ui(){
   $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
   const paused=mode==='tell'&&$('tpl').open;const lk=running&&!busy&&side==='ko'&&!paused,lp=running&&!busy&&side==='pt';
   $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
-  $('panKo').classList.toggle('typing',!running&&side==='ko');$('panPt').classList.toggle('typing',!running&&side==='pt');
-  $('koHint').textContent=running?'눌러서 한국어 듣기':'눌러서 한국어 입력';$('ptHint').textContent=running?'눌러서 환자 말 듣기':'눌러서 환자 언어 입력';
-  $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
+  $('panKo').classList.remove('typing');$('panPt').classList.remove('typing');
+  $('koHint').hidden=lk||!running;$('ptHint').hidden=lp||!running;
+  $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk||!running;$('ptHint').hidden=lp||!running;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
-  $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
+  $('typed').placeholder='한국어로 입력해서 통역 (한국어 → '+l.ko+')';
   if(running&&!busy&&paused&&side==='ko')status('검사 결과를 입력하는 동안에는 듣지 않습니다.');
   else if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "번역문 생성"을 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
@@ -694,7 +694,7 @@ function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('sayBtn').onclick=async()=>{if(speaking){stopSpeak();return;}const c=cur();if(!c||!c.qt||busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();status('🔊 '+L().ko+'로 읽는 중…');
   const ok=await speak(c.qt,lang);c.mute=!ok;busy=false;renderCur();ui();if(!running)status('');listen();};
-function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){side=target;ptSince=Date.now();ui();$('typed').focus({preventScroll:true});return;}if(side!==target)flip();}
+function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running)return;if(side!==target)flip();}
 [['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
   p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input,select,label,details,#draftBox'))return;listenTo(t);});
   p.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target===p)listenTo(t);});});
@@ -709,7 +709,7 @@ function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
 $('strict').onchange=()=>{if(running)stop();};
-$('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();if(!t||busy)return;$('typed').value='';abortRec();handle(t,side);};
+$('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();if(!t||busy)return;unlockPlayer();unlockSpeech();$('typed').value='';abortRec();side='ko';handle(t,'ko',true);};
 
 function renderLangs(){
   const box=$('langs');box.textContent='';
