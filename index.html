@@ -76,6 +76,11 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .tabn{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;padding:6px 0}
 .tabn button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-height:46px;padding:6px;font-size:15px}
 .tabn button[aria-pressed="true"]{background:var(--live);border-color:var(--live);color:#fff;font-weight:700}
+.tdet{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:3px 0;font-size:14px}
+.tdet label{color:var(--live);font-weight:700;white-space:nowrap}
+.tdet input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:42px;min-width:0;width:100%}
+.form td.n{font-size:15px;padding-top:0;border-bottom:1px solid var(--line)}
+.form tr.hasn td{border-bottom:0}
 .tchk{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:15px}
 .tchk input{width:22px;height:22px}
 .bodies{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:520px;margin:0 auto;width:100%}
@@ -564,7 +569,7 @@ async function handle(text,from,send){
       if(hit)tr=hit;
       else if(mode==='tell'){const ss=prepKo(text,true).split(/(?<=[.?!])\s+/).filter(Boolean);const ts=await Promise.all(ss.map(x=>translate(prepKo(x),'ko',l.id)));parts=ss.map((q,i)=>({q,qt:ts[i]}));tr=ts.join(' ');}
       else tr=await translate(prepKo(text),'ko',l.id);
-      const c=ask(text,tr);if(parts){c.parts=parts;let hit2=false;parts.forEach(p=>{if(tplSet.has(p.q)){p.src='tpl';hit2=true;}});if(hit2&&tplSnap){c.tpl=tplSnap;tplSnap=null;tplSet=new Set();}}
+      const c=ask(text,tr);if(parts){c.parts=parts;let hit2=false;parts.forEach(p=>{if(tplSet.has(p.q)){p.src='tpl';hit2=true;}});if(hit2&&tplSnap){c.tpl=tplSnap;c.tpl.forEach(r=>{if(r.noteQ){const p=parts.find(x=>x.q===r.noteQ);r.noteT=p?p.qt:'';}});tplSnap=null;tplSet=new Set();}}
       if(hit){c.back='미리 넣은 문구';renderCur();}
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
       status('🔊 '+l.ko+'로 읽는 중…');
@@ -729,7 +734,8 @@ function renderSheet(){
     rows.forEach(r=>{const tr=el('tr');const ix=r.id==='rest'?20:5+TPL.findIndex(t=>t[0]===r.id);
       const good=r.j==='정상'||r.j==='없음';
       const jd=el('td','j'+(r.j?(good?' ok':' ng'):''));if(r.j){jd.textContent=(good?'✓ ':'⚠ ')+(sheetLab?sheetLab[JIDX[r.j]]:r.j);if(sheetLab)jd.append(el('small','',r.j));}
-      tr.append(both('td',ix),el('td','v',r.val||''),jd);tb.append(tr);});
+      tr.append(both('td',ix),el('td','v',r.val||''),jd);tb.append(tr);
+      if(r.det){tr.className='hasn';const t2=el('tr'),td=el('td','n',r.noteT||r.det);td.colSpan=3;td.dir='auto';if(r.noteT)td.append(el('small','',r.det));t2.append(td);tb.append(t2);}});
     sec.append(tb);form.append(sec);}
   [['do',2,'➜'],['etc',3,'•']].forEach(([cat,hi,mark])=>{const a=items.filter(e=>e.keep&&e.cat===cat);if(!a.length)return;
     const sec=el('div');sec.append(both('h3',hi));const ul=el('ul');
@@ -786,9 +792,9 @@ $('bodyClose').onclick=()=>{$('bodyBox').hidden=true;};
 $('bodyReset').onclick=()=>{bodySel=[];renderBody();};
 $('bodyDone').onclick=()=>{$('bodyBox').hidden=true;if(!bodySel.length)return;answer('아픈 곳: '+bodySel.join(', '),'🧍');const c=cur();if(c&&!c.topic)c.topic='아픈 부위';if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();};
 /* ---------- 검사 결과 입력 ---------- */
-let tplJ={};
+let tplJ={},tplD={};
 function renderTpl(keep){
-  if(!keep)tplJ={};
+  if(!keep){tplJ={};tplD={};}
   const box=$('tplRows');const old={};['t_bp_0','t_bp_1','t_glu_0'].forEach(i=>{const e=$(i);if(e&&keep)old[i]=e.value;});
   const rest=$('tx_rest'),restOn=keep&&rest?rest.checked:true;const xo={};TPL_X.forEach(([id])=>{const e=$('tx_'+id);xo[id]=!!(keep&&e&&e.checked);});
   box.textContent='';
@@ -798,13 +804,16 @@ function renderTpl(keep){
   const s2=el('span');s2.append(el('label','','혈당'),mk('t_glu_0','혈당 수치'));nums.append(s1,s2);box.append(nums);
   const ab=el('div','tabn');
   TPLB.forEach(([id,j,label])=>{const b=el('button','',label);b.type='button';b.setAttribute('aria-pressed',tplJ[id]===j);
-    b.onclick=()=>{if(tplJ[id]===j)delete tplJ[id];else tplJ[id]=j;renderTpl(true);};ab.append(b);});
+    b.onclick=()=>{if(tplJ[id]===j){delete tplJ[id];delete tplD[id];}else tplJ[id]=j;renderTpl(true);};ab.append(b);});
   box.append(ab);
+  TPL.forEach(([id,label])=>{if(!tplJ[id])return;const r=el('div','tdet');const lb=el('label','',label+' '+tplJ[id]);lb.htmlFor='td_'+id;
+    const i=el('input');i.type='text';i.id='td_'+id;i.placeholder='구체적인 내용 (선택)';i.autocomplete='off';i.value=tplD[id]||'';i.oninput=()=>{tplD[id]=i.value;};r.append(lb,i);box.append(r);});
   const r0=el('label','tchk');const c0=el('input');c0.type='checkbox';c0.id='tx_rest';c0.checked=restOn;r0.append(c0,el('span','','누르지 않은 검사는 "정상"으로 설명'));box.append(r0);
   TPL_X.forEach(([id,label])=>{const r=el('label','tchk');const c=el('input');c.type='checkbox';c.id='tx_'+id;c.checked=xo[id];r.append(c,el('span','',label));box.append(r);});
 }
 const TPL_N={bp:'혈압',glu:'혈당',chol:'콜레스테롤',hb:'빈혈',liver:'간',kid:'콩팥',ua:'소변',cxr:'가슴 엑스레이',ecg:'심전도'};
 const REST_S='그 밖의 검사 결과는 정상입니다.',ALLOK_S='검사 결과는 모두 정상입니다.';
+function detSentence(id){const d=(tplD[id]||'').trim().replace(/\s+/g,' ');if(!tplJ[id]||!d)return '';const lab=TPL.find(t=>t[0]===id)[1];let x=/[다요][.!]?$|[.?!]$/.test(d)?d:lab+': '+d;if(!/[.?!]$/.test(x))x+='.';return x;}
 function tplSentences(){
   const nums=[],hi=[],lo=[],bad=[],out=[];let anemia=false;
   const b0=$('t_bp_0').value.trim(),b1=$('t_bp_1').value.trim(),g=$('t_glu_0').value.trim();
@@ -816,6 +825,7 @@ function tplSentences(){
   if(lo.length)out.push(lo.join(', ')+' 수치가 낮습니다.');
   if(bad.length)out.push(bad.join(', ')+' 검사에서 이상이 발견되었습니다.');
   if(anemia)out.push('빈혈이 있습니다.');
+  TPL.forEach(([id])=>{const d=detSentence(id);if(d)out.push(d);});
   if($('tx_rest').checked)out.push(abn?REST_S:ALLOK_S);
   TPL_X.forEach(([id,label,sen])=>{if($('tx_'+id).checked)out.push(sen);});
   return out;
@@ -823,7 +833,7 @@ function tplSentences(){
 function tplPrepare(){
   const a=tplSentences();if(!a.length)return a;const xs=TPL_X.map(x=>x[2]);a.forEach(x=>{if(!xs.includes(x))tplSet.add(x);});
   const b0=$('t_bp_0').value.trim(),b1=$('t_bp_1').value.trim(),g=$('t_glu_0').value.trim();
-  tplSnap=TPL.map(([id])=>({id,val:id==='bp'?(b0&&b1?b0+'/'+b1:''):id==='glu'?g:'',j:tplJ[id]||''})).filter(r=>r.val||r.j);
+  tplSnap=TPL.map(([id])=>({id,val:id==='bp'?(b0&&b1?b0+'/'+b1:''):id==='glu'?g:'',j:tplJ[id]||'',det:(tplD[id]||'').trim(),noteQ:detSentence(id)})).filter(r=>r.val||r.j);
   if($('tx_rest').checked)tplSnap.push({id:'rest',val:'',j:'정상'});
   return a;
 }
