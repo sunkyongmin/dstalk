@@ -538,7 +538,7 @@ $('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();i
 
 function renderLangs(){
   const box=$('langs');box.textContent='';
-  LANGS.forEach(l=>{const o=el('option','',l.ko+' · '+l.nat);o.value=l.id;o.selected=l.id===lang;box.append(o);});
+  LANGS.slice().sort((x,y)=>x.ko.localeCompare(y.ko,'ko')).forEach(l=>{const o=el('option','',l.ko+' · '+l.nat);o.value=l.id;o.selected=l.id===lang;box.append(o);});
 }
 $('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;const l=L();try{localStorage.setItem('dstalk-lang',lang);}catch(x){}
   ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
