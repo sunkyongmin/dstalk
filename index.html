@@ -383,6 +383,7 @@ const SHEET_EN=['Patient information sheet','Test results','What you need to do'
 const SHEET_KO=['환자 안내문','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사'];
 const JIDX={정상:14,높음:15,낮음:16,이상:17,있음:18,없음:19};
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
+const CATS_ASK=['기본','증상','과거력','검진'],CATS_TELL=['기본','검사결과','안내'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
 ['기본','안녕하세요. 저는 의사입니다.','Hello. I am a doctor.','您好，我是医生。','Здравствуйте. Я врач.','Сайн байна уу. Би эмч байна.','မင်္ဂလာပါ။ ဆရာဝန်ပါ။','សួស្តី។ ខ្ញុំជាគ្រូពេទ្យ។','Xin chào. Tôi là bác sĩ.'],
@@ -808,18 +809,19 @@ async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetB
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
-const MYCAT='⭐ 내 문구';
+const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
+const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
 let phEdit=false,myPh={hide:[],edit:{},add:[]};
 try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={hide:x.hide||[],edit:x.edit||{},add:x.add||[]};}catch(e){}
 function saveMyPh(){try{localStorage.setItem('dstalk-myph',JSON.stringify(myPh));}catch(e){}}
-function myHas(ko){return !!ko&&myPh.add.some(a=>a[0]===MYCAT&&normKo(a[1])===normKo(ko));}
+function myHas(ko){return !!ko&&myPh.add.some(a=>a[0]===myCat()&&normKo(a[1])===normKo(ko));}
 function phList(c){
   const out=[];
-  if(c!==MYCAT)P.filter(p=>p[0]===c&&!myPh.hide.includes(p[1])).forEach(p=>{const e=myPh.edit[p[1]];out.push({ko:e||p[1],orig:p[1],builtin:true,edited:!!e,p});});
+  if(!isMy(c))P.filter(p=>p[0]===c&&!myPh.hide.includes(p[1])).forEach(p=>{const e=myPh.edit[p[1]];out.push({ko:e||p[1],orig:p[1],builtin:true,edited:!!e,p});});
   myPh.add.forEach((a,i)=>{if(a[0]===c)out.push({ko:a[1],idx:i,builtin:false});});
   return out;
 }
-function renderCats(){const box=$('cats');box.textContent='';[MYCAT,...CATS].forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
+function renderCats(){const box=$('cats');box.textContent='';[myCat(),...(mode==='tell'?CATS_TELL:CATS_ASK)].forEach(c=>{const b=el('button','chip',c.trim());b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 async function askPhrase(ko,topic){
   if(busy)return false;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
@@ -833,11 +835,11 @@ async function askPhrase(ko,topic){
 function renderPhrases(){
   const box=$('phrases');box.textContent='';const l=L();const items=phList(cat);
   $('editPh').textContent=phEdit?'✓ 편집 마치기':'✎ 문구 편집';$('phAdd').hidden=!phEdit;
-  $('phReset').hidden=cat===MYCAT;
-  $('phNew').placeholder=cat===MYCAT?'자주 쓰는 문구를 한국어로 입력':'"'+cat+'"에 넣을 새 문구를 한국어로 입력';
+  $('phReset').hidden=isMy(cat);
+  $('phNew').placeholder=isMy(cat)?'자주 쓰는 문구를 한국어로 입력':'"'+cat.trim()+'"에 넣을 새 문구를 한국어로 입력';
   const anyPre=l.col!=null&&items.some(x=>x.builtin&&!x.edited&&x.p.length>2);
   $('phraseNote').textContent=phEdit?'문구를 고치면 미리 넣은 번역 대신 기계 번역을 씁니다. 이 기기에만 저장됩니다.':
-    cat===MYCAT&&!items.length?'자주 쓰는 문구를 저장해 두는 곳입니다. "✎ 문구 편집"으로 추가하거나, 통역한 문장 아래의 "☆ 내 문구로 저장"을 누르세요. 이 기기에만 저장됩니다.':
+    isMy(cat)&&!items.length?'자주 쓰는 문구를 저장해 두는 곳입니다. "✎ 문구 편집"으로 추가하거나, 통역한 문장 아래의 "☆ 내 문구로 저장"을 누르세요. 이 기기에만 저장됩니다.':
     anyPre?'미리 넣은 번역입니다 (원어민 검수 전). 고치거나 새로 넣은 문구는 누르면 그때 기계 번역합니다.':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
   items.forEach((it,n)=>{
     if(phEdit){const r=el('div','phedit');const i=el('input');i.id='ph_'+n;i.value=it.ko;i.setAttribute('aria-label','문구 고치기');
@@ -857,7 +859,7 @@ $('phNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault()
 let resetArm=false;
 $('phReset').onclick=()=>{const b=$('phReset');if(!resetArm){resetArm=true;b.textContent='한 번 더 누르면 되돌립니다';setTimeout(()=>{resetArm=false;b.textContent='이 분류를 기본 문구로 되돌리기';},3000);return;}
   resetArm=false;const ks=P.filter(p=>p[0]===cat).map(p=>p[1]);myPh.hide=myPh.hide.filter(k=>!ks.includes(k));ks.forEach(k=>delete myPh.edit[k]);myPh.add=myPh.add.filter(a=>a[0]!==cat);saveMyPh();b.textContent='이 분류를 기본 문구로 되돌리기';renderPhrases();};
-$('saveMy').onclick=()=>{const c=cur();if(!c||!c.q)return;if(!myHas(c.q)){addMy(MYCAT,c.q);}renderCur();if(cat===MYCAT)renderPhrases();};
+$('saveMy').onclick=()=>{const c=cur();if(!c||!c.q)return;if(!myHas(c.q)){addMy(myCat(),c.q);}renderCur();if(isMy(cat))renderPhrases();};
 let gi=0;function renderGuide(){$('sheetOpen').hidden=mode!=='tell';}
 /* ---------- 아픈 곳 그림 ---------- */
 const BODY_F=[['머리','c',60,20,16],['목','r',53,36,14,11],['가슴','r',36,48,48,36],['윗배','r',38,85,44,26],['아랫배','r',38,112,44,26],['오른팔','r',17,50,17,84],['왼팔','r',86,50,17,84],['오른다리','r',38,140,21,112],['왼다리','r',61,140,21,112]];
