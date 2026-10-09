@@ -29,6 +29,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:15px;min-height:40px}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .chip small{opacity:.75;margin-left:4px;font-size:12px}
+.langsel{display:flex;align-items:center;gap:10px;font-weight:600}
+.langsel select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;flex:1;min-width:0;font-weight:600}
 .priv{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
 .badge{border-radius:6px;padding:3px 8px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
 .badge.in{color:var(--ok);border-color:var(--ok)}
@@ -76,7 +78,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 <body>
 <div class="wrap">
   <h1>실시간 문진 통역</h1>
-  <div class="chips" id="langs" role="group" aria-label="환자 언어"></div>
+  <label class="langsel">환자 언어 <select id="langs"></select></label>
 
   <div class="priv" aria-live="polite">
     <span class="badge" id="bSrKo">한국어 음성: 확인 전</span>
@@ -95,7 +97,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="turn q" id="panKo">
       <div class="tag"><span>① 질문 · 의료진</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <p class="subt" id="qKo"></p>
-      <p class="main" id="qPt"></p>
+      <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
       <p class="interim" id="koInterim"></p>
       <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
@@ -103,8 +105,8 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="turn a" id="panPt">
       <div class="tag"><span id="ptTag">② 대답 · 환자</span><span class="mic" id="ptMic" hidden>🎤</span></div>
       <p class="main" id="aKo"></p>
-      <p class="subt" id="aPt"></p>
-      <p class="interim" id="ptInterim"></p>
+      <p class="subt" id="aPt" dir="auto"></p>
+      <p class="interim" id="ptInterim" dir="auto"></p>
       <p class="wait" id="aWait">질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.</p>
     </div>
   </div>
@@ -117,6 +119,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   <details>
     <summary>빠른 문구 40개 (누르면 바로 보여주고 읽어줍니다)</summary>
     <div class="chips" id="cats" style="padding-bottom:10px"></div>
+    <p class="note" id="phraseNote" style="padding-bottom:8px"></p>
     <div class="list" id="phrases"></div>
   </details>
 
@@ -137,13 +140,24 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
 <script>
 const LANGS=[
- {id:'en',ko:'영어',nat:'English',sr:'en-US',say:'Please speak now'},
- {id:'zh',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',say:'请现在说话'},
- {id:'ru',ko:'러시아어',nat:'Русский',sr:'ru-RU',say:'Говорите, пожалуйста'},
- {id:'mn',ko:'몽골어',nat:'Монгол',sr:'mn-MN',say:'Одоо ярина уу'},
- {id:'my',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',say:'အခု ပြောပါ'},
- {id:'km',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',say:'សូមនិយាយឥឡូវនេះ'},
- {id:'vi',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',say:'Xin hãy nói'}
+ {id:'zh',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
+ {id:'vi',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
+ {id:'th',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
+ {id:'en',ko:'영어',nat:'English',sr:'en-US',col:0,say:'Please speak now'},
+ {id:'uz',ko:'우즈베크어',nat:'Oʻzbekcha',sr:'uz-UZ',say:'Iltimos, gapiring'},
+ {id:'ne',ko:'네팔어',nat:'नेपाली',sr:'ne-NP',say:'कृपया अहिले बोल्नुहोस्'},
+ {id:'ru',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
+ {id:'fil',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
+ {id:'id',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
+ {id:'km',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
+ {id:'my',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',col:4,say:'အခု ပြောပါ'},
+ {id:'mn',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
+ {id:'bn',ko:'벵골어(방글라데시)',nat:'বাংলা',sr:'bn-BD',say:'অনুগ্রহ করে বলুন'},
+ {id:'si',ko:'싱할라어(스리랑카)',nat:'සිංහල',sr:'si-LK',say:'කරුණාකර කතා කරන්න'},
+ {id:'ur',ko:'우르두어(파키스탄)',nat:'اردو',sr:'ur-PK',say:'براہ کرم بولیں'},
+ {id:'ky',ko:'키르기스어',nat:'Кыргызча',sr:'ky-KG',say:'Сураныч, сүйлөңүз'},
+ {id:'lo',ko:'라오어',nat:'ລາວ',sr:'lo-LA',say:'ກະລຸນາເວົ້າ'},
+ {id:'ja',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
 ];
 const CATS=['기본','증상','과거력','검진','안내'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
@@ -198,7 +212,7 @@ const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PT_SILENCE_MS=12000;
-let lang='en',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
 const L=()=>LANGS.find(l=>l.id===lang);
@@ -394,20 +408,25 @@ $('typedForm').onsubmit=e=>{e.preventDefault();const t=$('typed').value.trim();i
 
 function renderLangs(){
   const box=$('langs');box.textContent='';
-  LANGS.forEach(l=>{const b=el('button','chip');b.type='button';b.textContent=l.ko;b.append(el('small','',l.nat));b.setAttribute('aria-pressed',l.id===lang);
-    b.onclick=()=>{const was=running;if(was)stop();lang=l.id;try{localStorage.setItem('dstalk-lang',lang);}catch(e){}
-      ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
-      badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderLangs();renderPhrases();ui();
-      status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':'시작을 누르면 의료진의 질문부터 듣습니다.');};
-    box.append(b);});
+  LANGS.forEach(l=>{const o=el('option','',l.ko+' · '+l.nat);o.value=l.id;o.selected=l.id===lang;box.append(o);});
 }
+$('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;const l=L();try{localStorage.setItem('dstalk-lang',lang);}catch(x){}
+  ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
+  badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();ui();
+  status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':'시작을 누르면 의료진의 질문부터 듣습니다.');};
 function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
+let phraseCache={};
 function renderPhrases(){
-  const box=$('phrases');box.textContent='';const i=idx();
-  P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';b.append(el('span','k',p[1]),el('span','f',p[2+i]));
+  const box=$('phrases');box.textContent='';const l=L();const pre=l.col!=null;
+  $('phraseNote').textContent=pre?'미리 넣은 번역입니다 (원어민 검수 전).':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
+  P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';
+    b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
     b.onclick=async()=>{if(busy)return;abortRec();busy=true;ui();
-      const c=ask(p[1],p[2+i]);c.back='미리 넣은 문구';renderCur();
-      await speak(p[2+i],lang);busy=false;side='pt';ptSince=Date.now();ui();listen();};
+      let t=pre?p[2+l.col]:phraseCache[lang+'|'+p[1]];
+      if(!t){status('통역 중…');try{t=await translate(p[1],'ko',lang);phraseCache[lang+'|'+p[1]]=t;}
+        catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return;}}
+      const c=ask(p[1],t);if(pre){c.back='미리 넣은 문구';renderCur();}
+      await speak(t,lang);busy=false;side='pt';ptSince=Date.now();ui();listen();};
     box.append(b);});
 }
 $('copyLog').onclick=async()=>{
