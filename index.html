@@ -76,6 +76,13 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid
 .tabn{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:6px;padding:6px 0}
 .tabn button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-height:46px;padding:6px;font-size:15px}
 .tabn button[aria-pressed="true"]{background:var(--live);border-color:var(--live);color:#fff;font-weight:700}
+.titem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.titem .tl{grid-column:1/-1;font-size:14px;font-weight:700}
+.titem input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:44px;min-width:0;width:100%}
+.titem .tc{display:flex;gap:4px}
+.titem .tc button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;min-height:44px;min-width:50px;padding:0 8px;font-size:14px}
+.titem .tc button[aria-pressed="true"]{background:var(--live);border-color:var(--live);color:#fff;font-weight:700}
+.titem .tc button.okc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tdet{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:3px 0;font-size:14px}
 .tdet label{color:var(--live);font-weight:700;white-space:nowrap}
 .tdet input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:42px;min-width:0;width:100%}
@@ -231,7 +238,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <div class="tag"><span id="koTag">① 질문 · 의료진</span><span class="hint" id="koHint">눌러서 한국어 듣기</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <div id="draftBox" hidden>
         <details id="tpl">
-          <summary>검사 결과 입력 (이상 있는 항목만 누르기)</summary>
+          <summary>검사 결과 입력</summary>
           <div id="tplRows"></div>
           <button class="go" id="tplGo" type="button" style="width:100%;min-height:50px;padding:8px;margin:6px 0">번역문 생성</button>
           <div class="btnrow"><button class="sec" id="tplMake" type="button">↓ 한국어 문장만 만들기</button><button class="sec" id="tplReset" type="button">입력 비우기</button></div>
@@ -799,48 +806,45 @@ $('bodyReset').onclick=()=>{bodySel=[];renderBody();};
 $('bodyDone').onclick=()=>{$('bodyBox').hidden=true;if(!bodySel.length)return;answer('아픈 곳: '+bodySel.join(', '),'🧍');const c=cur();if(c&&!c.topic)c.topic='아픈 부위';if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();};
 /* ---------- 검사 결과 입력 ---------- */
 let tplJ={},tplD={};
+const TPL_O={bp:['정상','높음','낮음'],glu:['정상','높음','낮음'],chol:['정상','높음'],hb:['정상','있음'],liver:['정상','높음'],kid:['정상','이상'],ua:['정상','이상'],cxr:['정상','이상'],ecg:['정상','이상']};
+const TPL_PH={bp:'예: 150/95',glu:'예: 180'};
 function renderTpl(keep){
   if(!keep){tplJ={};tplD={};}
-  const box=$('tplRows');const old={};['t_bp_0','t_bp_1','t_glu_0'].forEach(i=>{const e=$(i);if(e&&keep)old[i]=e.value;});
-  const rest=$('tx_rest'),restOn=keep&&rest?rest.checked:true;const xo={};TPL_X.forEach(([id])=>{const e=$('tx_'+id);xo[id]=!!(keep&&e&&e.checked);});
-  box.textContent='';
-  const nums=el('div','tnum');
-  const mk=(id,lab)=>{const i=el('input');i.type='number';i.inputMode='numeric';i.id=id;i.setAttribute('aria-label',lab);i.value=old[id]||'';return i;};
-  const s1=el('span');s1.append(el('label','','혈압'),mk('t_bp_0','혈압 수축기'),el('span','','/'),mk('t_bp_1','혈압 이완기'));
-  const s2=el('span');s2.append(el('label','','혈당'),mk('t_glu_0','혈당 수치'));nums.append(s1,s2);box.append(nums);
-  const ab=el('div','tabn');
-  TPLB.forEach(([id,j,label])=>{const b=el('button','',label);b.type='button';b.setAttribute('aria-pressed',tplJ[id]===j);
-    b.onclick=()=>{if(tplJ[id]===j){delete tplJ[id];delete tplD[id];}else tplJ[id]=j;renderTpl(true);};ab.append(b);});
-  box.append(ab);
-  TPL.forEach(([id,label])=>{if(!tplJ[id])return;const r=el('div','tdet');const lb=el('label','',label+' '+tplJ[id]);lb.htmlFor='td_'+id;
-    const i=el('input');i.type='text';i.id='td_'+id;i.placeholder='구체적인 내용 (선택)';i.autocomplete='off';i.value=tplD[id]||'';i.oninput=()=>{tplD[id]=i.value;};r.append(lb,i);box.append(r);});
-  const r0=el('label','tchk');const c0=el('input');c0.type='checkbox';c0.id='tx_rest';c0.checked=restOn;r0.append(c0,el('span','','누르지 않은 검사는 "정상"으로 설명'));box.append(r0);
+  const xo={};TPL_X.forEach(([id])=>{const e=$('tx_'+id);xo[id]=!!(keep&&e&&e.checked);});
+  const box=$('tplRows');box.textContent='';
+  TPL.forEach(([id,label])=>{const r=el('div','titem');
+    const lb=el('label','tl',label);lb.htmlFor='td_'+id;
+    const i=el('input');i.type='text';i.id='td_'+id;i.placeholder=TPL_PH[id]||'수치나 내용 (선택)';i.autocomplete='off';i.value=tplD[id]||'';i.oninput=()=>{tplD[id]=i.value;};
+    const tc=el('div','tc');
+    TPL_O[id].forEach(j=>{const b=el('button',j==='정상'?'okc':'',j);b.type='button';b.setAttribute('aria-pressed',tplJ[id]===j);b.setAttribute('aria-label',label+' '+j);
+      b.onclick=()=>{if(tplJ[id]===j)delete tplJ[id];else tplJ[id]=j;renderTpl(true);};tc.append(b);});
+    r.append(lb,i,tc);box.append(r);});
+  const all=el('button','sec','누르지 않은 항목 모두 정상으로');all.type='button';all.style.margin='8px 0 2px';all.onclick=()=>{TPL.forEach(([id])=>{if(!tplJ[id])tplJ[id]='정상';});renderTpl(true);};box.append(all);
   TPL_X.forEach(([id,label])=>{const r=el('label','tchk');const c=el('input');c.type='checkbox';c.id='tx_'+id;c.checked=xo[id];r.append(c,el('span','',label));box.append(r);});
 }
 const TPL_N={bp:'혈압',glu:'혈당',chol:'콜레스테롤',hb:'빈혈',liver:'간',kid:'콩팥',ua:'소변',cxr:'가슴 엑스레이',ecg:'심전도'};
-const REST_S='그 밖의 검사 결과는 정상입니다.',ALLOK_S='검사 결과는 모두 정상입니다.';
-function detSentence(id){const d=(tplD[id]||'').trim().replace(/\s+/g,' ');if(!tplJ[id]||!d)return '';const lab=TPL.find(t=>t[0]===id)[1];let x=/[다요][.!]?$|[.?!]$/.test(d)?d:lab+': '+d;if(!/[.?!]$/.test(x))x+='.';return x;}
+const tplVal=id=>(tplD[id]||'').trim().replace(/\s+/g,' ');
+const isNum=v=>/^[\d\s.\/+\-]+$/.test(v);
+function detSentence(id){const d=tplVal(id);if(!d||isNum(d))return '';const lab=TPL.find(t=>t[0]===id)[1];let x=/[다요][.!]?$|[.?!]$/.test(d)?d:lab+': '+d;if(!/[.?!]$/.test(x))x+='.';return x;}
 function tplSentences(){
-  const nums=[],hi=[],lo=[],bad=[],out=[];let anemia=false;
-  const b0=$('t_bp_0').value.trim(),b1=$('t_bp_1').value.trim(),g=$('t_glu_0').value.trim();
-  if(b0&&b1)nums.push('혈압은 '+b0+'/'+b1);if(g)nums.push('혈당은 '+g);
-  TPL.forEach(([id])=>{const j=tplJ[id],nm=TPL_N[id];if(j==='높음')hi.push(nm);else if(j==='낮음')lo.push(nm);else if(j==='이상')bad.push(nm);else if(j==='있음')anemia=true;});
+  const nums=[],ok=[],hi=[],lo=[],bad=[],out=[];let anemia=false;
+  TPL.forEach(([id])=>{const j=tplJ[id],nm=TPL_N[id],v=tplVal(id);
+    if(v&&isNum(v))nums.push(nm+' 수치는 '+v);
+    if(j==='정상')ok.push(nm);else if(j==='높음')hi.push(nm);else if(j==='낮음')lo.push(nm);else if(j==='이상')bad.push(nm);else if(j==='있음')anemia=true;});
   const abn=hi.length+lo.length+bad.length+(anemia?1:0);
   if(nums.length)out.push(nums.join(', ')+'입니다.');
+  if(ok.length)out.push(ok.length===TPL.length&&!abn?'검사 결과는 모두 정상입니다.':ok.join(', ')+' 검사 결과는 정상입니다.');
   if(hi.length)out.push(hi.join(', ')+' 수치가 높습니다.');
   if(lo.length)out.push(lo.join(', ')+' 수치가 낮습니다.');
   if(bad.length)out.push(bad.join(', ')+' 검사에서 이상이 발견되었습니다.');
   if(anemia)out.push('빈혈이 있습니다.');
   TPL.forEach(([id])=>{const d=detSentence(id);if(d)out.push(d);});
-  if($('tx_rest').checked)out.push(abn?REST_S:ALLOK_S);
   TPL_X.forEach(([id,label,sen])=>{if($('tx_'+id).checked)out.push(sen);});
   return out;
 }
 function tplPrepare(){
   const a=tplSentences();if(!a.length)return a;const xs=TPL_X.map(x=>x[2]);a.forEach(x=>{if(!xs.includes(x))tplSet.add(x);});
-  const b0=$('t_bp_0').value.trim(),b1=$('t_bp_1').value.trim(),g=$('t_glu_0').value.trim();
-  tplSnap=TPL.map(([id])=>({id,val:id==='bp'?(b0&&b1?b0+'/'+b1:''):id==='glu'?g:'',j:tplJ[id]||'',det:(tplD[id]||'').trim(),noteQ:detSentence(id)})).filter(r=>r.val||r.j);
-  if($('tx_rest').checked)tplSnap.push({id:'rest',val:'',j:'정상'});
+  tplSnap=TPL.map(([id])=>{const v=tplVal(id),n=isNum(v);return {id,val:n?v:'',j:tplJ[id]||'',det:n?'':v,noteQ:detSentence(id)};}).filter(r=>r.val||r.j||r.det);
   return a;
 }
 $('tplMake').onclick=()=>{const a=tplPrepare();if(!a.length)return;const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+a.join(' ');d.scrollTop=d.scrollHeight;$('tpl').open=false;d.scrollIntoView({block:'center'});};
