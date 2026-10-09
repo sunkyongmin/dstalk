@@ -424,10 +424,11 @@ function renderLog(){
 }
 
 /* ---------- 한 마디 처리 ---------- */
+let curInterim='';
+function appendDraft(text){text=(text||'').trim();if(!text)return;const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+prepKo(text,true);d.scrollTop=d.scrollHeight;$('koInterim').textContent='';curInterim='';}
 async function handle(text,from,send){
   if(from==='ko'&&mode==='tell'&&!send){
-    const d=$('draft');d.value=(d.value.trim()?d.value.trim()+' ':'')+prepKo(text,true);d.scrollTop=d.scrollHeight;
-    $('koInterim').textContent='';busy=false;ui();listen();return;
+    appendDraft(text);busy=false;ui();listen();return;
   }
   busy=true;ui();const l=L();
   try{
@@ -460,11 +461,13 @@ function listen(){
   if(!running||busy||!SR)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
   let finalText='';
-  const r=new SR();rec=r;r.lang=code;r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
+  const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
+  const r=new SR();rec=r;r.lang=code;r.interimResults=true;r.continuous=cont;r.maxAlternatives=1;
   if(srLocal[code]==='in'){try{r.processLocally=true;}catch(e){}}
   r.onresult=e=>{
     if(token!==recToken)return;let inter='';
-    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t;else inter+=t;}
+    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal){if(cont)appendDraft(t);else finalText+=t;}else inter+=t;}
+    if(mySide==='ko')curInterim=inter;
     if(mySide==='pt')ptSince=Date.now();
     $(mySide==='ko'?'koInterim':'ptInterim').textContent=inter||finalText;$(mySide==='ko'?'qWait':'aWait').hidden=true;
   };
@@ -485,7 +488,7 @@ function listen(){
     if(text){handle(text,mySide);return;}
     if(!running)return;
     if(side==='pt'&&(srLocal[L().sr]==='none'||Date.now()-ptSince>PT_SILENCE_MS)){side='ko';ui();}
-    setTimeout(()=>{if(token===recToken)listen();},250);
+    setTimeout(()=>{if(token===recToken)listen();},mode==='tell'?40:250);
   };
   try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
 }
@@ -506,8 +509,8 @@ function flip(){side=side==='ko'?'pt':'ko';ptSince=Date.now();abortRec();ui();li
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('flip').onclick=flip;
-$('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();const t=$('draft').value.trim();if(!t||busy)return;$('draft').value='';abortRec();handle(t,'ko',true);};
-$('clearDraft').onclick=()=>{$('draft').value='';};
+$('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();if(busy)return;const pend=curInterim;abortRec();if(pend)appendDraft(pend);const t=$('draft').value.trim();if(!t){listen();return;}$('draft').value='';handle(t,'ko',true);};
+$('clearDraft').onclick=()=>{$('draft').value='';curInterim='';$('koInterim').textContent='';};
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
