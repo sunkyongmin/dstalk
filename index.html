@@ -396,9 +396,9 @@ function ui(){
   const lk=running&&!busy&&side==='ko',lp=running&&!busy&&side==='pt';
   $('panKo').classList.toggle('listening',lk);$('panPt').classList.toggle('listening',lp);
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('ptMic').textContent='🎤 '+l.say;
-  $('ptTag').textContent='② 대답 · 환자 ('+l.ko+')';renderCur();
+  $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 대답 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode});renderLog();renderCur();return cur();}
@@ -521,11 +521,12 @@ $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
 $('flip').onclick=flip;
 $('sendDraft').onclick=()=>{unlockPlayer();unlockSpeech();if(busy)return;const pend=curInterim;abortRec();if(pend)appendDraft(pend);const t=$('draft').value.trim();if(!t){listen();return;}$('draft').value='';handle(t,'ko',true);};
 $('clearDraft').onclick=()=>{$('draft').value='';curInterim='';$('koInterim').textContent='';};
+const INTRO='시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.';
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
   cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();
-  side='ko';ui();if(running)switchListen();}
+  side='ko';ui();if(running)switchListen();else status(m==='tell'?'':INTRO);}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
 $('strict').onchange=()=>{if(running)stop();};
@@ -538,7 +539,7 @@ function renderLangs(){
 $('langs').onchange=e=>{const was=running;if(was)stop();lang=e.target.value;const l=L();try{localStorage.setItem('dstalk-lang',lang);}catch(x){}
   ['ptInterim','koInterim'].forEach(i=>$(i).textContent='');if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:''});renderLog();
   badge('bSrPt',l.ko+' 음성');badge('bTr','번역');side='ko';renderPhrases();ui();
-  status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':'시작을 누르면 의료진의 질문부터 듣습니다.');};
+  status(was?l.ko+'로 바꿨습니다. 다시 시작을 누르세요.':(mode==='tell'?'':'시작을 누르면 의료진의 질문부터 듣습니다.'));};
 function renderFlags(){
   const box=$('flags');box.textContent='';
   LANGS.forEach(l=>{const b=el('button','flagbtn');b.type='button';b.lang=l.id;
