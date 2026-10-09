@@ -285,7 +285,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
   <h2>지난 문답 <span id="logN"></span></h2>
   <div class="btnrow">
-    <button class="sec" id="sheetOpen" type="button">📄 환자에게 보여줄 설명</button>
+    <button class="sec" id="sheetOpen" type="button">📄 환자 안내문</button>
     <button class="sec" id="copyLog" type="button">차트용으로 복사</button>
     <button class="sec" id="clearLog" type="button">기록 지우기</button>
   </div>
@@ -338,8 +338,8 @@ const TPL=[['bp','혈압',['정상','높음','낮음'],2],['glu','혈당',['정�
 const TPL_S={bp:{정상:'혈압은 정상입니다.',높음:'혈압이 높습니다.',낮음:'혈압이 낮습니다.'},glu:{정상:'혈당은 정상입니다.',높음:'혈당이 높습니다.'},chol:{정상:'콜레스테롤은 정상입니다.',높음:'콜레스테롤이 높습니다.'},hb:{없음:'빈혈은 없습니다.',있음:'빈혈이 있습니다.'},liver:{정상:'간 검사 결과는 정상입니다.',높음:'간 검사 결과가 정상보다 높습니다.'},kid:{정상:'콩팥 검사 결과는 정상입니다.',이상:'콩팥 검사 결과가 정상이 아닙니다.'},ua:{정상:'소변 검사 결과는 정상입니다.',이상:'소변 검사 결과가 정상이 아닙니다.'},cxr:{정상:'가슴 엑스레이는 정상입니다.',이상:'가슴 엑스레이 검사에서 이상이 발견되었습니다.'},ecg:{정상:'심전도는 정상입니다.',이상:'심전도 검사에서 이상이 발견되었습니다.'}};
 const TPL_X=[['re','병원 재검사 권유','병원에 가서 다시 검사를 받으세요.'],['med','약 복용 안내','약을 매일 빠뜨리지 말고 드셔야 합니다.'],['life','생활습관 안내','소금을 적게 드시고 운동을 하세요.']];
 const TPLB=[['bp','높음','혈압 높음'],['bp','낮음','혈압 낮음'],['glu','높음','혈당 높음'],['chol','높음','콜레스테롤 높음'],['hb','있음','빈혈 있음'],['liver','높음','간 수치 높음'],['kid','이상','콩팥 이상'],['ua','이상','소변 이상'],['cxr','이상','가슴 엑스레이 이상'],['ecg','이상','심전도 이상']];
-const SHEET_EN=['Health check results','Test results','What you need to do','Explanation','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No','Other tests'];
-const SHEET_KO=['건강검진 결과 안내','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사'];
+const SHEET_EN=['Patient information sheet','Test results','What you need to do','Explanation','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No','Other tests'];
+const SHEET_KO=['환자 안내문','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사'];
 const JIDX={정상:14,높음:15,낮음:16,이상:17,있음:18,없음:19};
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
@@ -731,7 +731,7 @@ function renderSheet(){
   const d=new Date(),date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   $('sheetTitle').textContent=l.flag+' '+l.nat;
   const box=$('sheet');box.textContent='';box.classList.toggle('only',sheetOnly);
-  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'정리된 양식으로 환자에게 보여주기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!any;
+  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'환자 안내문 보기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!any;
   const n=items.filter(e=>e.keep).length;
   $('sheetNote').textContent=!any?'':sheetOnly?'환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요.':(rows.length?'입력한 검사 결과는 표로 자동으로 들어갑니다. ':'')+'아래에서 남길 문장을 체크하고, 종류(하실 일 / 설명)가 틀리면 눌러서 바꾸세요. 지금 '+n+'개를 골랐습니다.';
   if(!any){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));return;}
@@ -759,7 +759,7 @@ function renderSheet(){
   const foot=el('p','foot',(sheetLab?sheetLab[4]+' ':'')+'기계 번역입니다. 정확한 내용은 의료진에게 확인하세요.');foot.dir='auto';form.append(foot);
   box.append(form);
 }
-async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s5-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
+async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s6-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
