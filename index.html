@@ -401,7 +401,7 @@ function gtts(text,code){return new Promise(res=>{
 });}
 
 /* 한국어 음성 인식 결과에는 문장부호가 없어 번역이 틀어지기 쉬움: 인사말 뒤 마침표, 질문에 물음표를 붙이고 흔한 문진 표현은 번역이 잘 되는 꼴로 바꿈 */
-const SUBJ=/^(혈압|혈당|콜레스테롤|중성지방|간 |간이|간은|콩팥|신장|소변|가슴|폐|심장|심전도|빈혈|체중|갑상선|엑스레이|초음파|요산|단백뇨|염증|검사 결과|결과)/;
+const SUBJ=/^(혈압|혈당|콜레스테롤|중성지방|간 |간이|간은|간,|콩팥|신장|소변|가슴|폐|심장|심전도|빈혈|체중|갑상선|엑스레이|초음파|요산|단백뇨|염증|검사 결과|결과)/;
 function fixKoTell(t){
   t=t.replace(/(\d+)에 (\d+)/g,'$1/$2');
   if(mode!=='tell')return t;
@@ -533,8 +533,11 @@ async function handle(text,from,send){
     if(from==='ko'){
       $('koInterim').textContent='';status('통역 중…');
       const hit=bankHit(text);
-      const tr=hit||await translate(prepKo(text),'ko',l.id);
-      const c=ask(text,tr);
+      let parts=null,tr;
+      if(hit)tr=hit;
+      else if(mode==='tell'){const ss=prepKo(text,true).split(/(?<=[.?!])\s+/).filter(Boolean);const ts=await Promise.all(ss.map(x=>translate(prepKo(x),'ko',l.id)));parts=ss.map((q,i)=>({q,qt:ts[i]}));tr=ts.join(' ');}
+      else tr=await translate(prepKo(text),'ko',l.id);
+      const c=ask(text,tr);if(parts&&parts.length>1)c.parts=parts;
       if(hit){c.back='미리 넣은 문구';renderCur();}
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
       status('🔊 '+l.ko+'로 읽는 중…');
@@ -659,7 +662,7 @@ function renderReply(){
   for(let n=0;n<=10;n++){const b=el('button','',String(n));b.type='button';b.setAttribute('aria-label','통증 '+n);b.onclick=()=>pick('통증 '+n+'/10',String(n)+' / 10');pb.append(b);}
 }
 let sheetOnly=false;
-function sheetItems(){const a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');return a.length?a:log.filter(e=>e.qt&&e.lang===lang);}
+function sheetItems(){let a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!a.length)a=log.filter(e=>e.qt&&e.lang===lang);return a.flatMap(e=>e.parts||[e]);}
 function renderSheet(){
   const l=L(),items=sheetItems();
   const d=new Date();$('sheetTitle').textContent=l.flag+' '+l.nat+' · '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -729,12 +732,19 @@ function renderTpl(){
     const sel=el('select');sel.id='t_'+id;sel.setAttribute('aria-label',label+' 판정');sel.append(el('option','','선택 안 함'));opts.forEach(o=>sel.append(el('option','',o)));r.append(sel);box.append(r);});
   TPL_X.forEach(([id,label])=>{const r=el('label','tchk');const c=el('input');c.type='checkbox';c.id='tx_'+id;r.append(c,el('span','',label));box.append(r);});
 }
+const TPL_N={bp:'혈압',glu:'혈당',chol:'콜레스테롤',hb:'빈혈',liver:'간',kid:'콩팥',ua:'소변',cxr:'가슴 엑스레이',ecg:'심전도'};
 function tplSentences(){
-  const out=[];
-  TPL.forEach(([id,label,opts,n])=>{const v=[];for(let i=0;i<n;i++)v.push($('t_'+id+'_'+i).value.trim());const j=$('t_'+id).value;
-    if(id==='bp'&&v[0]&&v[1])out.push('혈압은 '+v[0]+'/'+v[1]+'입니다.');
-    if(id==='glu'&&v[0])out.push('혈당은 '+v[0]+'입니다.');
-    if(TPL_S[id][j])out.push(TPL_S[id][j]);});
+  const nums=[],ok=[],hi=[],lo=[],bad=[],out=[];let anemia=false;
+  TPL.forEach(([id,label,opts,n])=>{const v=[];for(let i=0;i<n;i++)v.push($('t_'+id+'_'+i).value.trim());const j=$('t_'+id).value,nm=TPL_N[id];
+    if(id==='bp'&&v[0]&&v[1])nums.push('혈압은 '+v[0]+'/'+v[1]);
+    if(id==='glu'&&v[0])nums.push('혈당은 '+v[0]);
+    if(j==='정상'||j==='없음')ok.push(nm);else if(j==='높음')hi.push(nm);else if(j==='낮음')lo.push(nm);else if(j==='이상')bad.push(nm);else if(j==='있음')anemia=true;});
+  if(nums.length)out.push(nums.join(', ')+'입니다.');
+  if(ok.length)out.push(ok.join(', ')+' 검사 결과는 정상입니다.');
+  if(hi.length)out.push(hi.join(', ')+' 수치가 높습니다.');
+  if(lo.length)out.push(lo.join(', ')+' 수치가 낮습니다.');
+  if(bad.length)out.push(bad.join(', ')+' 검사에서 이상이 발견되었습니다.');
+  if(anemia)out.push('빈혈이 있습니다.');
   TPL_X.forEach(([id,label,sen])=>{if($('tx_'+id).checked)out.push(sen);});
   return out;
 }
