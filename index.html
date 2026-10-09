@@ -503,18 +503,18 @@ function switchListen(){
   try{old.addEventListener('end',fin);old.abort();}catch(e){fin();}
   setTimeout(fin,1500);
 }
-async function start(){
+async function start(firstSide){
   if(!SR){status('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome(PC·안드로이드)이나 Safari(아이폰)에서 열어 주세요. 글 입력과 빠른 문구는 쓸 수 있습니다.',true);return;}
   $('go').disabled=true;status('준비 중…');
   let p;try{p=await prepare();}finally{$('go').disabled=false;}
   if(p.a==='none'){status('한국어 음성 인식을 쓸 수 없습니다.',true);return;}
   if($('strict').checked&&(p.a!=='in'||p.b!=='in'||!p.tr)){status('"외부 전송 차단" 상태에서는 '+L().ko+' 통역을 시작할 수 없습니다. 빨간 표시 항목이 기기 안에서 지원되지 않습니다.',true);return;}
-  running=true;side='ko';busy=false;
+  running=true;side=firstSide||'ko';ptSince=Date.now()+2000;busy=false;
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').catch(()=>{});}catch(e){}
   ui();listen();
 }
 function stop(){running=false;busy=false;abortRec();try{speechSynthesis.cancel();}catch(e){}try{player.pause();}catch(e){}ui();status('멈췄습니다.');}
-function flip(){if(busy)return;const pend=curInterim;if(side==='ko'&&mode==='tell'&&pend)appendDraft(pend);side=side==='ko'?'pt':'ko';ptSince=Date.now()+2000;ui();status('듣는 언어를 바꾸는 중…');switchListen();}
+function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(side==='ko'?'pt':'ko');return;}const pend=curInterim;if(side==='ko'&&mode==='tell'&&pend)appendDraft(pend);side=side==='ko'?'pt':'ko';ptSince=Date.now()+2000;ui();status('듣는 언어를 바꾸는 중…');switchListen();}
 
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
