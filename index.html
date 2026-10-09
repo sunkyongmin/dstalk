@@ -233,18 +233,19 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
         <details id="tpl">
           <summary>검사 결과 입력 (이상 있는 항목만 누르기)</summary>
           <div id="tplRows"></div>
-          <button class="go" id="tplGo" type="button" style="width:100%;min-height:50px;padding:8px;margin:6px 0">바로 통역해서 읽어주기</button>
+          <button class="go" id="tplGo" type="button" style="width:100%;min-height:50px;padding:8px;margin:6px 0">바로 통역하기</button>
           <div class="btnrow"><button class="sec" id="tplMake" type="button">↓ 문장만 만들어 고치기</button><button class="sec" id="tplReset" type="button">입력 비우기</button></div>
         </details>
         <textarea id="draft" rows="3" aria-label="설명할 내용" placeholder="말하면 여기에 한국어로 쌓입니다. 직접 고치거나 입력해도 됩니다."></textarea>
         <div class="btnrow">
-          <button class="go" id="sendDraft" type="button" style="flex:1">통역해서 읽어주기</button>
+          <button class="go" id="sendDraft" type="button" style="flex:1">통역하기</button>
           <button class="pbtn2" id="clearDraft" type="button">지우기</button>
         </div>
       </div>
       <p class="subt" id="qKo"></p>
       <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
+      <button class="pbtn2" id="sayBtn" type="button" hidden style="align-self:flex-start;min-height:46px">🔊 읽어주기</button>
       <p class="subt" id="qMute" hidden>🔇 이 언어는 읽어주는 음성이 없습니다. 화면을 보여주세요.</p>
       <p class="interim" id="koInterim"></p>
       <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
@@ -528,7 +529,7 @@ function ui(){
   $('koMic').hidden=!lk;$('ptMic').hidden=!lp;$('koHint').hidden=lk;$('ptHint').hidden=lp;$('ptMic').textContent='🎤 '+l.say;
   $('ptTag').textContent=(mode==='tell'?'② 질문 · 환자 (':'② 대답 · 환자 (')+l.ko+')';renderCur();
   $('typed').placeholder='글로 입력해서 통역 (지금: '+(side==='ko'?'한국어 → '+l.ko:l.ko+' → 한국어')+')';
-  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역해서 읽어주기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
+  if(running&&!busy)status(side==='ko'?(mode==='tell'?'🎤 설명 듣는 중 · 말을 마치면 "통역하기"를 누르세요':'🎤 질문 듣는 중 · 의료진이 한국어로 말하세요'):'🎤 '+(mode==='tell'?'질문':'대답')+' 듣는 중 · 환자가 '+l.ko+'로 말할 차례 ('+Math.round(PT_SILENCE_MS/1000)+'초 조용하면 다음 질문으로 넘어갑니다)');
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
@@ -536,7 +537,7 @@ function answer(a,at){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
   $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
-  $('qMute').hidden=!c.mute;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
+  $('qMute').hidden=!c.mute;$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
   $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 이 칸을 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
@@ -572,8 +573,7 @@ async function handle(text,from,send){
       const c=ask(text,tr);if(parts){c.parts=parts;let hit2=false;parts.forEach(p=>{if(tplSet.has(p.q)){p.src='tpl';hit2=true;}});if(hit2&&tplSnap){c.tpl=tplSnap;c.tpl.forEach(r=>{if(r.noteQ){const p=parts.find(x=>x.q===r.noteQ);r.noteT=p?p.qt:'';}});tplSnap=null;tplSet=new Set();}}
       if(hit){c.back='미리 넣은 문구';renderCur();}
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
-      status('🔊 '+l.ko+'로 읽는 중…');
-      if(!await speak(tr,l.id)){c.mute=true;renderCur();}
+      if(mode==='ask'){status('🔊 '+l.ko+'로 읽는 중…');if(!await speak(tr,l.id)){c.mute=true;renderCur();}}
       if(mode==='ask'){side='pt';ptSince=Date.now();}
     }else{
       $('ptInterim').textContent='';status('통역 중…');
@@ -651,6 +651,8 @@ function flip(){if(busy)return;unlockPlayer();unlockSpeech();if(!running){start(
 
 /* ---------- 이벤트 ---------- */
 $('go').onclick=()=>{unlockPlayer();unlockSpeech();running?stop():start();};
+$('sayBtn').onclick=async()=>{const c=cur();if(!c||!c.qt||busy)return;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();status('🔊 '+L().ko+'로 읽는 중…');
+  const ok=await speak(c.qt,lang);c.mute=!ok;busy=false;renderCur();ui();if(!running)status('');listen();};
 function listenTo(target){if(busy)return;if(running&&side===target&&!switching)return;if(!running){unlockPlayer();unlockSpeech();start(target);return;}if(side!==target)flip();}
 [['panKo','ko'],['panPt','pt']].forEach(([id,t])=>{const p=$(id);p.setAttribute('role','button');p.tabIndex=0;
   p.addEventListener('click',e=>{if(e.target.closest('textarea,button,input'))return;listenTo(t);});
