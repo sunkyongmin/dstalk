@@ -164,6 +164,9 @@ h2{font-size:14px;color:var(--muted);margin:6px 0 0;font-weight:600}
 details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px}
 summary{cursor:pointer;padding:10px 0;font-weight:600}
 .list{display:flex;flex-direction:column;gap:6px;padding-bottom:10px}
+.phedit{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.phedit input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:46px;min-width:0}
+.phedit button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-height:46px;padding:0 12px}
 .phrase{text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .phrase .k{font-weight:600}
 .phrase .f{font-size:14px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
@@ -268,6 +271,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <p class="main" id="qPt" dir="auto"></p>
       <p class="subt" id="qBack"></p>
       <button class="pbtn2" id="sayBtn" type="button" hidden style="align-self:flex-start;min-height:46px">🔊 번역문 읽어주기</button>
+      <button class="pbtn2" id="saveMy" type="button" hidden style="align-self:flex-start;min-height:40px;font-size:14px">☆ 내 문구로 저장</button>
       <p class="subt" id="qMute" hidden>🔇 이 언어는 읽어주는 음성이 없습니다. 화면을 보여주세요.</p>
       <p class="interim" id="koInterim"></p>
       <p class="wait" id="qWait">의료진이 한국어로 먼저 물어보세요.</p>
@@ -295,8 +299,13 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   <details>
     <summary>빠른 문구 (누르면 바로 보여주고 읽어줍니다)</summary>
     <div class="chips" id="cats" style="padding-bottom:10px"></div>
+    <div class="btnrow" style="padding-bottom:8px"><button class="sec" id="editPh" type="button">✎ 문구 편집</button></div>
     <p class="note" id="phraseNote" style="padding-bottom:8px"></p>
     <div class="list" id="phrases"></div>
+    <div id="phAdd" hidden>
+      <div class="typed" style="margin-top:8px"><input id="phNew" autocomplete="off" aria-label="새 문구" placeholder="새 문구를 한국어로 입력"><button class="sec" id="phNewBtn" type="button">추가</button></div>
+      <div class="btnrow" style="padding:8px 0 10px"><button class="sec" id="phReset" type="button">이 분류를 기본 문구로 되돌리기</button></div>
+    </div>
   </details>
 
   <h2>지난 문답 <span id="logN"></span></h2>
@@ -565,7 +574,7 @@ function answer(a,at){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
   $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
-  $('qMute').hidden=!c.mute;$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
+  $('qMute').hidden=!c.mute;$('saveMy').hidden=!c.q||c.back==='미리 넣은 문구';$('saveMy').textContent=myHas(c.q)?'★ 내 문구에 있음':'☆ 내 문구로 저장';$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
   $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 이 칸을 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
@@ -781,11 +790,22 @@ async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetB
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
-function renderCats(){const box=$('cats');box.textContent='';CATS.forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
+const MYCAT='⭐ 내 문구';
+let phEdit=false,myPh={hide:[],edit:{},add:[]};
+try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={hide:x.hide||[],edit:x.edit||{},add:x.add||[]};}catch(e){}
+function saveMyPh(){try{localStorage.setItem('dstalk-myph',JSON.stringify(myPh));}catch(e){}}
+function myHas(ko){return !!ko&&myPh.add.some(a=>a[0]===MYCAT&&normKo(a[1])===normKo(ko));}
+function phList(c){
+  const out=[];
+  if(c!==MYCAT)P.filter(p=>p[0]===c&&!myPh.hide.includes(p[1])).forEach(p=>{const e=myPh.edit[p[1]];out.push({ko:e||p[1],orig:p[1],builtin:true,edited:!!e,p});});
+  myPh.add.forEach((a,i)=>{if(a[0]===c)out.push({ko:a[1],idx:i,builtin:false});});
+  return out;
+}
+function renderCats(){const box=$('cats');box.textContent='';[MYCAT,...CATS].forEach(c=>{const b=el('button','chip',c);b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 async function askPhrase(ko,topic){
   if(busy)return false;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
-  const l=L(),p=P.find(x=>x[1]===ko),pre=l.col!=null&&p&&p.length>2;
+  const l=L(),p=P.find(x=>x[1]===ko),pre=l.col!=null&&p&&p.length>2&&!myPh.edit[ko];
   let t=pre?p[2+l.col]:phraseCache[lang+'|'+ko];
   if(!t){status('통역 중…');try{t=await translate(prepKo(ko),'ko',lang);phraseCache[lang+'|'+ko]=t;}
     catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return false;}}
@@ -793,12 +813,33 @@ async function askPhrase(ko,topic){
   if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();if(!running)status('');listen();return true;
 }
 function renderPhrases(){
-  const box=$('phrases');box.textContent='';const l=L();const pre=l.col!=null&&cat!=='검사결과';
-  $('phraseNote').textContent=pre?'미리 넣은 번역입니다 (원어민 검수 전).':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
-  P.filter(p=>p[0]===cat).forEach(p=>{const b=el('button','phrase');b.type='button';
-    b.append(el('span','k',p[1]));if(pre){const f=el('span','f',p[2+l.col]);f.dir='auto';b.append(f);}
-    b.onclick=()=>askPhrase(p[1]);box.append(b);});
+  const box=$('phrases');box.textContent='';const l=L();const items=phList(cat);
+  $('editPh').textContent=phEdit?'✓ 편집 마치기':'✎ 문구 편집';$('phAdd').hidden=!phEdit;
+  $('phReset').hidden=cat===MYCAT;
+  $('phNew').placeholder=cat===MYCAT?'자주 쓰는 문구를 한국어로 입력':'"'+cat+'"에 넣을 새 문구를 한국어로 입력';
+  const anyPre=l.col!=null&&items.some(x=>x.builtin&&!x.edited&&x.p.length>2);
+  $('phraseNote').textContent=phEdit?'문구를 고치면 미리 넣은 번역 대신 기계 번역을 씁니다. 이 기기에만 저장됩니다.':
+    cat===MYCAT&&!items.length?'자주 쓰는 문구를 저장해 두는 곳입니다. "✎ 문구 편집"으로 추가하거나, 통역한 문장 아래의 "☆ 내 문구로 저장"을 누르세요. 이 기기에만 저장됩니다.':
+    anyPre?'미리 넣은 번역입니다 (원어민 검수 전). 고치거나 새로 넣은 문구는 누르면 그때 기계 번역합니다.':l.ko+'는 미리 넣은 번역이 없어, 누르면 그때 기계 번역합니다.';
+  items.forEach((it,n)=>{
+    if(phEdit){const r=el('div','phedit');const i=el('input');i.id='ph_'+n;i.value=it.ko;i.setAttribute('aria-label','문구 고치기');
+      i.onchange=()=>{const v=i.value.trim();if(!v)return;
+        if(it.builtin){if(v===it.orig)delete myPh.edit[it.orig];else myPh.edit[it.orig]=v;}else myPh.add[it.idx][1]=v;saveMyPh();renderPhrases();};
+      const d=el('button','','삭제');d.type='button';d.onclick=()=>{if(it.builtin){myPh.hide.push(it.orig);delete myPh.edit[it.orig];}else myPh.add.splice(it.idx,1);saveMyPh();renderPhrases();};
+      r.append(i,d);box.append(r);return;}
+    const b=el('button','phrase');b.type='button';b.append(el('span','k',it.ko));
+    const pre=it.builtin&&!it.edited&&l.col!=null&&it.p.length>2;
+    if(pre){const f=el('span','f',it.p[2+l.col]);f.dir='auto';b.append(f);}
+    b.onclick=()=>askPhrase(it.ko);box.append(b);});
 }
+$('editPh').onclick=()=>{phEdit=!phEdit;renderPhrases();};
+function addMy(c,v){v=(v||'').trim();if(!v)return false;if(myPh.add.some(a=>a[0]===c&&normKo(a[1])===normKo(v)))return false;myPh.add.push([c,v]);saveMyPh();return true;}
+$('phNewBtn').onclick=()=>{if(addMy(cat,$('phNew').value)){$('phNew').value='';renderPhrases();}};
+$('phNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('phNewBtn').click();}});
+let resetArm=false;
+$('phReset').onclick=()=>{const b=$('phReset');if(!resetArm){resetArm=true;b.textContent='한 번 더 누르면 되돌립니다';setTimeout(()=>{resetArm=false;b.textContent='이 분류를 기본 문구로 되돌리기';},3000);return;}
+  resetArm=false;const ks=P.filter(p=>p[0]===cat).map(p=>p[1]);myPh.hide=myPh.hide.filter(k=>!ks.includes(k));ks.forEach(k=>delete myPh.edit[k]);myPh.add=myPh.add.filter(a=>a[0]!==cat);saveMyPh();b.textContent='이 분류를 기본 문구로 되돌리기';renderPhrases();};
+$('saveMy').onclick=()=>{const c=cur();if(!c||!c.q)return;if(!myHas(c.q)){addMy(MYCAT,c.q);}renderCur();if(cat===MYCAT)renderPhrases();};
 let gi=0;function renderGuide(){$('sheetOpen').hidden=mode!=='tell';}
 /* ---------- 아픈 곳 그림 ---------- */
 const BODY_F=[['머리','c',60,20,16],['목','r',53,36,14,11],['가슴','r',36,48,48,36],['윗배','r',38,85,44,26],['아랫배','r',38,112,44,26],['오른팔','r',17,50,17,84],['왼팔','r',86,50,17,84],['오른다리','r',38,140,21,112],['왼다리','r',61,140,21,112]];
