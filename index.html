@@ -342,18 +342,18 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
 <script>
 const LANGS=[
+ {id:'ru',flag:'🇷🇺',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
+ {id:'mn',flag:'🇲🇳',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
+ {id:'km',flag:'🇰🇭',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
  {id:'zh',flag:'🇨🇳',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
  {id:'vi',flag:'🇻🇳',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
  {id:'th',flag:'🇹🇭',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
  {id:'en',flag:'🇺🇸',ko:'영어',nat:'English',sr:'en-US',col:0,say:'Please speak now'},
  {id:'uz',flag:'🇺🇿',ko:'우즈베크어',nat:'Oʻzbekcha',sr:'uz-UZ',say:'Iltimos, gapiring'},
  {id:'ne',flag:'🇳🇵',ko:'네팔어',nat:'नेपाली',sr:'ne-NP',say:'कृपया अहिले बोल्नुहोस्'},
- {id:'ru',flag:'🇷🇺',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
  {id:'fil',flag:'🇵🇭',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
  {id:'id',flag:'🇮🇩',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
- {id:'km',flag:'🇰🇭',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
  {id:'my',flag:'🇲🇲',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',col:4,say:'အခု ပြောပါ'},
- {id:'mn',flag:'🇲🇳',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
  {id:'bn',flag:'🇧🇩',ko:'벵골어(방글라데시)',nat:'বাংলা',sr:'bn-BD',say:'অনুগ্রহ করে বলুন'},
  {id:'si',flag:'🇱🇰',ko:'싱할라어(스리랑카)',nat:'සිංහල',sr:'si-LK',say:'කරුණාකර කතා කරන්න'},
  {id:'ur',flag:'🇵🇰',ko:'우르두어(파키스탄)',nat:'اردو',sr:'ur-PK',say:'براہ کرم بولیں'},
@@ -375,12 +375,12 @@ const EXTRA={"en": ["A little", "A lot", "Today", "Yesterday", "2–3 days ago",
 const EXTRA_EN=['A little','A lot','Today','Yesterday','2-3 days ago','About a week ago','More than a month'];
 const EXTRA_KO=['조금','많이','오늘','어제','2~3일 전','일주일쯤 전','한 달 이상'];
 const GUIDE=[['주증상','어디가 불편해서 오셨어요?'],['아픈 부위','아픈 곳을 손으로 가리켜 주세요.'],['발병 시기','언제부터 시작됐어요?'],['통증 정도','통증이 얼마나 심한가요? 0에서 10 중에서 골라 주세요.'],['발열','열이 났어요?'],['기저질환','고혈압이나 당뇨가 있어요?'],['복용약','지금 먹는 약이 있어요?'],['알레르기','약이나 음식에 알레르기가 있어요?'],['수술력','수술받은 적이 있어요?'],['임신 가능성','임신했을 가능성이 있어요?'],['흡연·음주','담배를 피우거나 술을 마셔요?']];
-const TPL=[['bp','혈압',['정상','높음','낮음'],2],['glu','혈당',['정상','높음'],1],['chol','콜레스테롤',['정상','높음'],0],['hb','빈혈',['없음','있음'],0],['liver','간 검사',['정상','높음'],0],['kid','콩팥 검사',['정상','이상'],0],['ua','소변 검사',['정상','이상'],0],['cxr','가슴 엑스레이',['정상','이상'],0],['ecg','심전도',['정상','이상'],0]];
+const TPL=[['bp','혈압',['정상','높음','낮음'],2],['glu','혈당',['정상','높음'],1],['chol','콜레스테롤',['정상','높음'],0],['hb','빈혈',['없음','있음'],0],['liver','간 검사',['정상','높음'],0],['kid','콩팥 검사',['정상','이상'],0],['us','초음파',['정상','이상'],0],['ua','소변 검사',['정상','이상'],0],['cxr','가슴 엑스레이',['정상','이상'],0],['ecg','심전도',['정상','이상'],0]];
 const TPL_S={bp:{정상:'혈압은 정상입니다.',높음:'혈압이 높습니다.',낮음:'혈압이 낮습니다.'},glu:{정상:'혈당은 정상입니다.',높음:'혈당이 높습니다.'},chol:{정상:'콜레스테롤은 정상입니다.',높음:'콜레스테롤이 높습니다.'},hb:{없음:'빈혈은 없습니다.',있음:'빈혈이 있습니다.'},liver:{정상:'간 검사 결과는 정상입니다.',높음:'간 검사 결과가 정상보다 높습니다.'},kid:{정상:'콩팥 검사 결과는 정상입니다.',이상:'콩팥 검사 결과가 정상이 아닙니다.'},ua:{정상:'소변 검사 결과는 정상입니다.',이상:'소변 검사 결과가 정상이 아닙니다.'},cxr:{정상:'가슴 엑스레이는 정상입니다.',이상:'가슴 엑스레이 검사에서 이상이 발견되었습니다.'},ecg:{정상:'심전도는 정상입니다.',이상:'심전도 검사에서 이상이 발견되었습니다.'}};
 const TPL_X=[['re','병원 재검사 권유','병원에 가서 다시 검사를 받으세요.'],['med','약 복용 안내','약을 매일 빠뜨리지 말고 드셔야 합니다.'],['life','생활습관 안내','소금을 적게 드시고 운동을 하세요.']];
 const TPLB=[['bp','높음','혈압 높음'],['bp','낮음','혈압 낮음'],['glu','높음','혈당 높음'],['chol','높음','콜레스테롤 높음'],['hb','있음','빈혈 있음'],['liver','높음','간 수치 높음'],['kid','이상','콩팥 이상'],['ua','이상','소변 이상'],['cxr','이상','가슴 엑스레이 이상'],['ecg','이상','심전도 이상']];
-const SHEET_EN=['Patient information sheet','Test results','What you need to do','Explanation','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No','Other tests'];
-const SHEET_KO=['환자 안내문','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사'];
+const SHEET_EN=['Patient information sheet','Test results','What you need to do','Explanation','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No','Other tests','Ultrasound'];
+const SHEET_KO=['환자 안내문','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사','초음파'];
 const JIDX={정상:14,높음:15,낮음:16,이상:17,있음:18,없음:19};
 const CATS=['기본','증상','과거력','검진','안내','검사결과'];
 const CATS_ASK=['기본','증상','과거력','검진'],CATS_TELL=['기본','검사결과','안내'];
@@ -433,11 +433,12 @@ const P=[
 ];
 
 ['검사 결과를 설명해 드리겠습니다.','검사 결과는 모두 정상입니다.','혈압이 정상입니다.','혈압이 높습니다.','혈당이 높습니다. 당뇨병일 수 있습니다.','콜레스테롤이 높습니다.','빈혈이 있습니다.','간 검사 결과가 정상보다 높습니다.','콩팥 검사 결과가 정상이 아닙니다.','소변에서 피가 나왔습니다.','소변에서 단백질이 나왔습니다.','가슴 엑스레이는 정상입니다.','가슴 엑스레이 검사에서 이상이 발견되었습니다. 병원에서 추가 검사를 받으세요.','심전도는 정상입니다.','B형 간염 바이러스가 있습니다. 병원 진료가 필요합니다.','당신은 지금 위험한 상태가 아닙니다.','병원에 가서 다시 검사를 받으세요.','약을 매일 빠뜨리지 말고 드셔야 합니다.','소금을 적게 드시고 운동을 하세요.','술과 담배를 줄이세요.','이 종이를 병원에 가져가서 보여 주세요.','궁금한 것이 있으면 물어보세요.'].forEach(k=>P.push(['검사결과',k]));
+['진통제입니다. 아플 때만 드세요.','위장약입니다. 식사 30분 전에 드세요.','빈속에 드시지 마세요. 식사 후에 드세요.','이 약은 3일 동안 드세요.','이 약은 일주일 동안 드세요.','이 약을 먹으면 졸릴 수 있습니다. 운전하지 마세요.','술과 함께 드시지 마세요.','약을 먹고 두드러기가 나거나 숨이 차면 바로 병원에 가세요.','약을 다 드셔도 좋아지지 않으면 병원에 가세요.','지금 드시는 약과 같이 드셔도 됩니다.','연고는 하루 두 번, 아픈 곳에 얇게 바르세요.','파스는 하루에 한 장, 12시간만 붙이세요.'].forEach(k=>P.push(['안내',k]));
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PT_SILENCE_MS=8000;
-let mode='ask',lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let mode='ask',lang='ru',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
 const L=()=>LANGS.find(l=>l.id===lang);
@@ -792,7 +793,7 @@ function renderSheet(){
   const form=el('div','form');
   const head=el('div');head.append(both('h2',0),el('p','meta',date+' · '+l.nat));form.append(head);
   if(rows.length){const sec=el('div');sec.append(both('h3',1));const tb=el('table');
-    rows.forEach(r=>{const tr=el('tr');const ix=r.id==='rest'?20:5+TPL.findIndex(t=>t[0]===r.id);
+    rows.forEach(r=>{const tr=el('tr');const ix={rest:20,bp:5,glu:6,chol:7,hb:8,liver:9,kid:10,ua:11,cxr:12,ecg:13,us:21}[r.id];
       const good=r.j==='정상'||r.j==='없음';
       const jd=el('td','j'+(r.j?(good?' ok':' ng'):''));if(r.j){jd.textContent=(good?'✓ ':'⚠ ')+(sheetLab?sheetLab[JIDX[r.j]]:r.j);if(sheetLab)jd.append(el('small','',r.j));}
       tr.append(both('td',ix),el('td','v',r.val||''),jd);tb.append(tr);
@@ -805,7 +806,7 @@ function renderSheet(){
   const foot=el('p','foot',(sheetLab?sheetLab[4]+' ':'')+'기계 번역입니다. 정확한 내용은 의료진에게 확인하세요.');foot.dir='auto';form.append(foot);
   box.append(form);
 }
-async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s6-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
+async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s7-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
@@ -882,8 +883,8 @@ $('bodyReset').onclick=()=>{bodySel=[];renderBody();};
 $('bodyDone').onclick=()=>{$('bodyBox').hidden=true;if(!bodySel.length)return;answer('아픈 곳: '+bodySel.join(', '),'🧍');const c=cur();if(c&&!c.topic)c.topic='아픈 부위';if(running&&side!=='ko'){side='ko';ui();switchListen();}else ui();};
 /* ---------- 검사 결과 입력 ---------- */
 let tplJ={},tplD={};
-const TPL_O={bp:['정상','높음','낮음'],glu:['정상','높음','낮음'],chol:['정상','높음'],hb:['정상','있음'],liver:['정상','높음'],kid:['정상','이상'],ua:['정상','이상'],cxr:['정상','이상'],ecg:['정상','이상']};
-const TPL_PH={bp:'예: 150/95',glu:'예: 180'};
+const TPL_O={bp:['정상','높음','낮음'],glu:['정상','높음','낮음'],chol:['정상','높음'],hb:['정상','있음'],liver:['정상','높음'],kid:['정상','이상'],us:['정상','이상'],ua:['정상','이상'],cxr:['정상','이상'],ecg:['정상','이상']};
+const TPL_PH={bp:'예: 150/95',glu:'예: 180',us:'예: 지방간, 담낭 용종'};
 function renderTpl(keep){
   if(!keep){tplJ={};tplD={};}
   const xo={};TPL_X.forEach(([id])=>{const e=$('tx_'+id);xo[id]=!!(keep&&e&&e.checked);});
@@ -898,7 +899,7 @@ function renderTpl(keep){
   const all=el('button','sec','누르지 않은 항목 모두 정상으로');all.type='button';all.style.margin='8px 0 2px';all.onclick=()=>{TPL.forEach(([id])=>{if(!tplJ[id])tplJ[id]='정상';});renderTpl(true);};box.append(all);
   TPL_X.forEach(([id,label])=>{const r=el('label','tchk');const c=el('input');c.type='checkbox';c.id='tx_'+id;c.checked=xo[id];r.append(c,el('span','',label));box.append(r);});
 }
-const TPL_N={bp:'혈압',glu:'혈당',chol:'콜레스테롤',hb:'빈혈',liver:'간',kid:'콩팥',ua:'소변',cxr:'가슴 엑스레이',ecg:'심전도'};
+const TPL_N={bp:'혈압',glu:'혈당',chol:'콜레스테롤',hb:'빈혈',liver:'간',kid:'콩팥',us:'초음파',ua:'소변',cxr:'가슴 엑스레이',ecg:'심전도'};
 const tplVal=id=>(tplD[id]||'').trim().replace(/\s+/g,' ');
 const isNum=v=>/^[\d\s.\/+\-]+$/.test(v);
 function detSentence(id){const d=tplVal(id);if(!d||isNum(d))return '';const lab=TPL.find(t=>t[0]===id)[1];let x=/[다요][.!]?$|[.?!]$/.test(d)?d:lab+': '+d;if(!/[.?!]$/.test(x))x+='.';return x;}
