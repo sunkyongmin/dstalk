@@ -342,33 +342,33 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
 
 <script>
 const LANGS=[
- {id:'zh',flag:'🇨🇳',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
- {id:'vi',flag:'🇻🇳',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
- {id:'th',flag:'🇹🇭',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
  {id:'en',flag:'🇺🇸',ko:'영어',nat:'English',sr:'en-US',col:0,say:'Please speak now'},
+ {id:'zh',flag:'🇨🇳',ko:'중국어',nat:'中文',sr:'zh-CN',gt:'zh-CN',col:1,say:'请现在说话'},
+ {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'},
+ {id:'th',flag:'🇹🇭',ko:'태국어',nat:'ไทย',sr:'th-TH',say:'กรุณาพูดได้เลย'},
+ {id:'vi',flag:'🇻🇳',ko:'베트남어',nat:'Tiếng Việt',sr:'vi-VN',col:6,say:'Xin hãy nói'},
+ {id:'ru',flag:'🇷🇺',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
+ {id:'fr',flag:'🇫🇷',ko:'프랑스어',nat:'Français',sr:'fr-FR',say:'Parlez, s’il vous plaît'},
+ {id:'de',flag:'🇩🇪',ko:'독일어',nat:'Deutsch',sr:'de-DE',say:'Bitte sprechen Sie'},
+ {id:'es',flag:'🇪🇸',ko:'스페인어',nat:'Español',sr:'es-ES',say:'Hable, por favor'},
+ {id:'it',flag:'🇮🇹',ko:'이탈리아어',nat:'Italiano',sr:'it-IT',say:'Parli, per favore'},
+ {id:'id',flag:'🇮🇩',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
+ {id:'fil',flag:'🇵🇭',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
+ {id:'mn',flag:'🇲🇳',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
+ {id:'ar',flag:'🇪🇬',ko:'아랍어',nat:'العربية',sr:'ar-SA',say:'تفضل بالكلام'},
+ {id:'pt',flag:'🇹🇱',ko:'포르투갈어(동티모르)',nat:'Português',sr:'pt-PT',say:'Fale, por favor'},
  {id:'uz',flag:'🇺🇿',ko:'우즈베크어',nat:'Oʻzbekcha',sr:'uz-UZ',say:'Iltimos, gapiring'},
  {id:'ne',flag:'🇳🇵',ko:'네팔어',nat:'नेपाली',sr:'ne-NP',say:'कृपया अहिले बोल्नुहोस्'},
- {id:'ru',flag:'🇷🇺',ko:'러시아어',nat:'Русский',sr:'ru-RU',col:2,say:'Говорите, пожалуйста'},
- {id:'fil',flag:'🇵🇭',ko:'필리핀어(타갈로그)',nat:'Filipino',sr:'fil-PH',gt:'tl',say:'Magsalita po kayo'},
- {id:'id',flag:'🇮🇩',ko:'인도네시아어',nat:'Bahasa Indonesia',sr:'id-ID',say:'Silakan bicara'},
  {id:'km',flag:'🇰🇭',ko:'캄보디아어',nat:'ខ្មែរ',sr:'km-KH',col:5,say:'សូមនិយាយឥឡូវនេះ'},
  {id:'my',flag:'🇲🇲',ko:'미얀마어',nat:'မြန်မာ',sr:'my-MM',col:4,say:'အခု ပြောပါ'},
- {id:'mn',flag:'🇲🇳',ko:'몽골어',nat:'Монгол',sr:'mn-MN',col:3,say:'Одоо ярина уу'},
  {id:'bn',flag:'🇧🇩',ko:'벵골어(방글라데시)',nat:'বাংলা',sr:'bn-BD',say:'অনুগ্রহ করে বলুন'},
  {id:'si',flag:'🇱🇰',ko:'싱할라어(스리랑카)',nat:'සිංහල',sr:'si-LK',say:'කරුණාකර කතා කරන්න'},
  {id:'ur',flag:'🇵🇰',ko:'우르두어(파키스탄)',nat:'اردو',sr:'ur-PK',say:'براہ کرم بولیں'},
  {id:'ky',flag:'🇰🇬',ko:'키르기스어',nat:'Кыргызча',sr:'ky-KG',say:'Сураныч, сүйлөңүз'},
  {id:'lo',flag:'🇱🇦',ko:'라오어',nat:'ລາວ',sr:'lo-LA',say:'ກະລຸນາເວົ້າ'},
- {id:'fr',flag:'🇫🇷',ko:'프랑스어',nat:'Français',sr:'fr-FR',say:'Parlez, s’il vous plaît'},
- {id:'es',flag:'🇪🇸',ko:'스페인어',nat:'Español',sr:'es-ES',say:'Hable, por favor'},
- {id:'ar',flag:'🇪🇬',ko:'아랍어',nat:'العربية',sr:'ar-SA',say:'تفضل بالكلام'},
  {id:'kk',flag:'🇰🇿',ko:'카자흐어',nat:'Қазақша',sr:'kk-KZ',say:'Сөйлеңіз'},
  {id:'hi',flag:'🇮🇳',ko:'힌디어',nat:'हिन्दी',sr:'hi-IN',say:'कृपया बोलिए'},
- {id:'ta',flag:'🇱🇰',ko:'타밀어',nat:'தமிழ்',sr:'ta-IN',say:'தயவுசெய்து பேசுங்கள்'},
- {id:'pt',flag:'🇹🇱',ko:'포르투갈어(동티모르)',nat:'Português',sr:'pt-PT',say:'Fale, por favor'},
- {id:'de',flag:'🇩🇪',ko:'독일어',nat:'Deutsch',sr:'de-DE',say:'Bitte sprechen Sie'},
- {id:'it',flag:'🇮🇹',ko:'이탈리아어',nat:'Italiano',sr:'it-IT',say:'Parli, per favore'},
- {id:'ja',flag:'🇯🇵',ko:'일본어',nat:'日本語',sr:'ja-JP',say:'お話しください'}
+ {id:'ta',flag:'🇱🇰',ko:'타밀어',nat:'தமிழ்',sr:'ta-IN',say:'தயவுசெய்து பேசுங்கள்'}
 ];
 const YN={"en": ["Yes", "No", "I don't know"], "zh": ["是", "不是", "不知道"], "ru": ["Да", "Нет", "Не знаю"], "mn": ["Тийм", "Үгүй", "Мэдэхгүй"], "my": ["ဟုတ်ကဲ့", "မဟုတ်ဘူး", "မသိပါ"], "km": ["បាទ / ចាស", "ទេ", "មិនដឹងទេ"], "vi": ["Có", "Không", "Không biết"], "th": ["ใช่", "ไม่ใช่", "ไม่ทราบ"], "uz": ["Ha", "Yoʻq", "Bilmayman"], "ne": ["हो", "होइन", "थाहा छैन"], "fil": ["Oo", "Hindi", "Hindi ko alam"], "id": ["Ya", "Tidak", "Tidak tahu"], "bn": ["হ্যাঁ", "না", "জানি না"], "si": ["ඔව්", "නැහැ", "දන්නේ නැහැ"], "ur": ["جی ہاں", "نہیں", "معلوم نہیں"], "ky": ["Ооба", "Жок", "Билбейм"], "lo": ["ແມ່ນ", "ບໍ່", "ບໍ່ຮູ້"], "fr": ["Oui", "Non", "Je ne sais pas"], "es": ["Sí", "No", "No lo sé"], "ar": ["نعم", "لا", "لا أعرف"], "kk": ["Иә", "Жоқ", "Білмеймін"], "hi": ["हाँ", "नहीं", "पता नहीं"], "ta": ["ஆம்", "இல்லை", "தெரியாது"], "pt": ["Sim", "Não", "Não sei"], "de": ["Ja", "Nein", "Ich weiß nicht"], "it": ["Sì", "No", "Non lo so"], "ja": ["はい", "いいえ", "わかりません"]};
 const EXTRA={"en": ["A little", "A lot", "Today", "Yesterday", "2–3 days ago", "About a week ago", "More than a month"], "zh": ["一点", "很多", "今天", "昨天", "两三天前", "大约一周前", "一个月以上"], "ru": ["Немного", "Сильно", "Сегодня", "Вчера", "2–3 дня назад", "Около недели назад", "Больше месяца"], "mn": ["Бага зэрэг", "Их", "Өнөөдөр", "Өчигдөр", "2–3 хоногийн өмнө", "Долоо хоногийн өмнө", "Нэг сараас дээш"], "my": ["နည်းနည်း", "အများကြီး", "ဒီနေ့", "မနေ့က", "လွန်ခဲ့တဲ့ ၂-၃ ရက်က", "လွန်ခဲ့တဲ့ တစ်ပတ်လောက်က", "တစ်လကျော်"], "km": ["បន្តិច", "ច្រើន", "ថ្ងៃនេះ", "ម្សិលមិញ", "២-៣ ថ្ងៃមុន", "ប្រហែលមួយសប្តាហ៍មុន", "ជាងមួយខែ"], "vi": ["Một chút", "Nhiều", "Hôm nay", "Hôm qua", "2–3 ngày trước", "Khoảng một tuần trước", "Hơn một tháng"]};
@@ -438,7 +438,7 @@ const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PT_SILENCE_MS=8000;
-let mode='ask',lang='zh',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let mode='ask',lang='en',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
 const L=()=>LANGS.find(l=>l.id===lang);
