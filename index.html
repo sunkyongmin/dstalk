@@ -130,6 +130,11 @@ summary .n{display:inline-grid;place-items:center;width:24px;height:24px;border-
 .sheet .it{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;cursor:pointer}
 .sheet .it input{width:26px;height:26px;margin:6px 0 0;accent-color:var(--accent)}
 .sheet .it>div{min-width:0}
+.sheet .ed{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
+.sheet .ed input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:46px;min-width:0}
+.sheet .ed input.f{font-size:18px}
+.sheet .ed button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-height:46px;padding:0 12px}
+.sheet .ed .lab{grid-column:1/-1;font-size:12px;color:var(--muted)}
 .sheet .it.off{opacity:.45}
 .sheet.only .it.off{display:none}
 .form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
@@ -211,8 +216,10 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="btnrow">
       <button class="go" id="sheetOnly" type="button" style="flex:1;min-height:48px;padding:8px">고른 문장만 환자에게 보여주기</button>
       <button class="sec" id="sheetNone" type="button">전체 해제</button>
+      <button class="sec" id="sheetEditBtn" type="button">✎ 문구 편집</button>
     </div>
     <p class="note" id="sheetNote"></p>
+    <div class="phedit" id="sheetAddRow" hidden><input id="sheetNew" placeholder="안내문에 넣을 문장을 한국어로 입력" aria-label="새 문장"><button id="sheetNewBtn" type="button">추가</button></div>
     <div class="sheet" id="sheet"></div>
   </div>
 </div>
@@ -755,7 +762,7 @@ function renderReply(){
   const pb=$('pain');pb.textContent='';
   for(let n=0;n<=10;n++){const b=el('button','',String(n));b.type='button';b.setAttribute('aria-label','통증 '+n);b.onclick=()=>pick('통증 '+n+'/10',String(n)+' / 10');pb.append(b);}
 }
-let sheetOnly=false,sheetLab=null,tplSnap=null,tplSet=new Set();
+let sheetOnly=false,sheetEdit=false,sheetAdd=[],sheetLab=null,tplSnap=null,tplSet=new Set();
 const SHEET_L={"ne":["बिरामीका लागि जानकारी","जाँचको नतिजा","तपाईंले गर्नुपर्ने कुरा","व्याख्या","यो मेसिन अनुवाद हो।","रक्तचाप","रगतमा चिनी","कोलेस्ट्रोल","रक्तअल्पता","कलेजो जाँच","मृगौला जाँच","पिसाब जाँच","छातीको एक्स-रे","ईसीजी (मुटु जाँच)","सामान्य","उच्च","कम","असामान्य","छ","छैन","अन्य जाँच","अल्ट्रासाउन्ड"],"zh": ["患者须知", "检查结果", "您需要做的事", "说明", "本内容为机器翻译。", "血压", "血糖", "胆固醇", "贫血", "肝功能检查", "肾功能检查", "尿液检查", "胸部X光", "心电图", "正常", "偏高", "偏低", "异常", "有", "无", "其他检查", "超声检查"], "ja": ["患者さま向け説明書", "検査結果", "今後していただくこと", "説明", "これは機械翻訳です。", "血圧", "血糖", "コレステロール", "貧血", "肝機能検査", "腎機能検査", "尿検査", "胸部X線", "心電図", "正常", "高い", "低い", "異常", "あり", "なし", "その他の検査", "超音波検査"], "th": ["เอกสารข้อมูลสำหรับผู้ป่วย", "ผลการตรวจ", "สิ่งที่คุณต้องทำ", "คำอธิบาย", "นี่คือการแปลด้วยเครื่อง", "ความดันโลหิต", "น้ำตาลในเลือด", "คอเลสเตอรอล", "โลหิตจาง", "การตรวจตับ", "การตรวจไต", "การตรวจปัสสาวะ", "เอกซเรย์ทรวงอก", "คลื่นไฟฟ้าหัวใจ (ECG)", "ปกติ", "สูง", "ต่ำ", "ผิดปกติ", "มี", "ไม่มี", "การตรวจอื่น ๆ", "อัลตราซาวด์"], "vi": ["Phiếu thông tin cho bệnh nhân", "Kết quả xét nghiệm", "Những việc bạn cần làm", "Giải thích", "Đây là bản dịch máy.", "Huyết áp", "Đường huyết", "Cholesterol", "Thiếu máu", "Xét nghiệm gan", "Xét nghiệm thận", "Xét nghiệm nước tiểu", "X-quang ngực", "Điện tâm đồ", "Bình thường", "Cao", "Thấp", "Bất thường", "Có", "Không", "Các xét nghiệm khác", "Siêu âm"], "ru": ["Памятка для пациента", "Результаты обследования", "Что вам нужно сделать", "Пояснение", "Это машинный перевод.", "Артериальное давление", "Сахар в крови", "Холестерин", "Анемия", "Анализ функции печени", "Анализ функции почек", "Анализ мочи", "Рентген грудной клетки", "ЭКГ", "Норма", "Повышено", "Понижено", "Отклонение от нормы", "Есть", "Нет", "Другие обследования", "УЗИ"], "fr": ["Fiche d'information patient", "Résultats des examens", "Ce que vous devez faire", "Explication", "Ceci est une traduction automatique.", "Tension artérielle", "Glycémie", "Cholestérol", "Anémie", "Bilan hépatique", "Bilan rénal", "Analyse d'urine", "Radiographie thoracique", "ECG (examen du cœur)", "Normal", "Élevé", "Bas", "Anormal", "Oui", "Non", "Autres examens", "Échographie"], "de": ["Patienteninformation", "Untersuchungsergebnisse", "Was Sie tun sollten", "Erklärung", "Dies ist eine maschinelle Übersetzung.", "Blutdruck", "Blutzucker", "Cholesterin", "Blutarmut (Anämie)", "Leberwerte", "Nierenwerte", "Urinuntersuchung", "Röntgen des Brustkorbs", "EKG (Herzuntersuchung)", "Normal", "Erhöht", "Erniedrigt", "Auffällig", "Ja", "Nein", "Weitere Untersuchungen", "Ultraschall"], "es": ["Hoja informativa para el paciente", "Resultados de las pruebas", "Lo que debe hacer", "Explicación", "Esta es una traducción automática.", "Presión arterial", "Azúcar en sangre", "Colesterol", "Anemia", "Prueba del hígado", "Prueba del riñón", "Análisis de orina", "Radiografía de tórax", "ECG (prueba del corazón)", "Normal", "Alto", "Bajo", "Anormal", "Sí", "No", "Otras pruebas", "Ecografía"], "it": ["Foglio informativo per il paziente", "Risultati degli esami", "Cosa deve fare", "Spiegazione", "Questa è una traduzione automatica.", "Pressione sanguigna", "Glicemia", "Colesterolo", "Anemia", "Esami del fegato", "Esami dei reni", "Esame delle urine", "Radiografia del torace", "ECG (esame del cuore)", "Normale", "Alto", "Basso", "Anomalo", "Sì", "No", "Altri esami", "Ecografia"], "mn": ["Өвчтөнд зориулсан мэдээлэл", "Шинжилгээний хариу", "Таны хийх зүйлс", "Тайлбар", "Энэ бол машин орчуулга.", "Цусны даралт", "Цусан дахь сахар", "Холестерол", "Цус багадалт", "Элэгний шинжилгээ", "Бөөрний шинжилгээ", "Шээсний шинжилгээ", "Цээжний рентген", "Зүрхний цахилгаан бичлэг", "Хэвийн", "Өндөр", "Бага", "Хэвийн бус", "Байгаа", "Байхгүй", "Бусад шинжилгээ", "Хэт авиан шинжилгээ"], "km": ["ព័ត៌មានសម្រាប់អ្នកជំងឺ", "លទ្ធផលពិនិត្យ", "អ្វីដែលអ្នកត្រូវធ្វើ", "ការពន្យល់", "នេះជាការបកប្រែដោយម៉ាស៊ីន។", "សម្ពាធឈាម", "ជាតិស្ករក្នុងឈាម", "កូឡេស្តេរ៉ុល", "ភាពស្លេកស្លាំង", "ការពិនិត្យថ្លើម", "ការពិនិត្យតម្រងនោម", "ការពិនិត្យទឹកនោម", "ការថតកាំរស្មីអ៊ិចទ្រូង", "ការពិនិត្យបេះដូង (ECG)", "ធម្មតា", "ខ្ពស់", "ទាប", "មិនធម្មតា", "មាន", "គ្មាន", "ការពិនិត្យផ្សេងទៀត", "អេកូ (អ៊ុលត្រាសោន)"], "my": ["လူနာအတွက် အချက်အလက်", "စစ်ဆေးမှုရလဒ်များ", "သင်လုပ်ရမည့်အရာများ", "ရှင်းလင်းချက်", "ဤသည်မှာ စက်ဘာသာပြန်ဖြစ်သည်။", "သွေးပေါင်", "သွေးတွင်းသကြားဓာတ်", "ကိုလက်စထရော", "သွေးအားနည်းခြင်း", "အသည်းစစ်ဆေးမှု", "ကျောက်ကပ်စစ်ဆေးမှု", "ဆီးစစ်ဆေးမှု", "ရင်ဘတ်ဓာတ်မှန်", "နှလုံးလှိုင်းစစ်ဆေးမှု (ECG)", "ပုံမှန်", "မြင့်", "နိမ့်", "ပုံမှန်မဟုတ်", "ရှိ", "မရှိ", "အခြားစစ်ဆေးမှုများ", "အာထရာဆောင်း"]};
 async function trLabel(t,id){
   try{const tr=await localTranslator('en',id);if(tr)return (await tr.translate(t)).trim();}catch(e){}
@@ -780,7 +787,7 @@ async function batchEn(list,key){
 function sheetEntries(){let a=log.filter(e=>e.qt&&e.lang===lang&&e.kind==='tell');if(!a.length)a=log.filter(e=>e.qt&&e.lang===lang);return a;}
 function sheetRows(){const m={};sheetEntries().forEach(e=>{(e.tpl||[]).forEach(r=>{m[r.id]=r;});});const r=TPL.map(t=>m[t[0]]).filter(Boolean);if(m.rest)r.push(m.rest);return r;}
 function sheetItems(){const hasTable=sheetRows().length>0;
-  return sheetEntries().flatMap(e=>e.parts||[e]).filter(p=>!(hasTable&&p.src==='tpl')).map(p=>{
+  return sheetEntries().flatMap(e=>e.parts||[e]).concat(sheetAdd.filter(a=>a.lang===lang)).filter(p=>!p.gone&&!(hasTable&&p.src==='tpl')).map(p=>{
     if(p.cat==null)p.cat=/(세요|십시오|야 합니다|야 해요|필요합니다|바랍니다)[.!]?$/.test(p.q)&&!/^(안녕|감사|수고)/.test(p.q)?'do':'etc';
     if(p.keep==null)p.keep=!/[?？]$/.test(p.q)&&!/^(안녕|감사|수고)/.test(p.q);
     return p;});}
@@ -790,9 +797,23 @@ function renderSheet(){
   const d=new Date(),date=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   $('sheetTitle').textContent=l.flag+' '+l.nat;
   const box=$('sheet');box.textContent='';box.classList.toggle('only',sheetOnly);
-  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'환자 안내문 보기';$('sheetNone').hidden=sheetOnly||!items.length;$('sheetOnly').hidden=!any;
+  $('sheetOnly').textContent=sheetOnly?'← 다시 고르기':'환자 안내문 보기';$('sheetNone').hidden=sheetOnly||!items.length||sheetEdit;$('sheetOnly').hidden=!any||sheetEdit;
+  $('sheetEditBtn').hidden=sheetOnly;$('sheetEditBtn').textContent=sheetEdit?'✓ 편집 마치기':'✎ 문구 편집';$('sheetAddRow').hidden=!sheetEdit||sheetOnly;
   const n=items.filter(e=>e.keep).length;
   $('sheetNote').textContent=!any?'':sheetOnly?'환자가 이 화면을 휴대폰으로 사진 찍어 가도록 해 주세요.':(rows.length?'입력한 검사 결과는 표로 자동으로 들어갑니다. ':'')+'아래에서 남길 문장을 체크하고, 종류(하실 일 / 설명)가 틀리면 눌러서 바꾸세요. 지금 '+n+'개를 골랐습니다.';
+  if(sheetEdit&&!sheetOnly){
+    $('sheetNote').textContent='한국어를 고치면 다시 기계 번역하고, 번역문을 직접 고칠 수도 있습니다. 아래 칸에 새 문장을 넣어 추가할 수 있습니다.';
+    items.forEach((e,i)=>{const r=el('div','ed');
+      const k=el('input');k.value=e.q;k.setAttribute('aria-label','한국어 문장');
+      k.onchange=async()=>{const v=k.value.trim();if(!v||v===e.q)return;e.q=v;e.cat=null;k.disabled=true;
+        try{e.qt=await translate(prepKo(v),'ko',lang);}catch(err){status('번역하지 못했습니다. 인터넷 연결을 확인하세요.',true);}finally{k.disabled=false;}
+        if(e.cat==null)e.cat=/(세요|십시오|야 합니다|야 해요|필요합니다|바랍니다)[.!]?$/.test(e.q)?'do':'etc';renderSheet();};
+      const d=el('button','','삭제');d.type='button';d.onclick=()=>{e.gone=true;renderSheet();};
+      const f=el('input','f');f.value=e.qt;f.dir='auto';f.setAttribute('aria-label',l.ko+' 번역문');f.style.gridColumn='1/-1';
+      f.onchange=()=>{const v=f.value.trim();if(v)e.qt=v;};
+      r.append(k,d,f);box.append(r);});
+    return;
+  }
   if(!any){box.append(el('p','note','아직 '+l.ko+'로 통역한 설명이 없습니다. 설명 탭에서 통역한 내용이 여기에 모입니다.'));return;}
   if(!sheetOnly){
     items.forEach((e,i)=>{const it=el('label','it'+(e.keep?'':' off'));
@@ -818,9 +839,14 @@ function renderSheet(){
   const foot=el('p','foot',(sheetLab&&sheetLab[4]?sheetLab[4]+' ':'')+'기계 번역입니다. 정확한 내용은 의료진에게 확인하세요.');foot.dir='auto';form.append(foot);
   box.append(form);
 }
-async function openSheet(){sheetOnly=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s8-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
+async function openSheet(){sheetOnly=false;sheetEdit=false;sheetLab=null;renderSheet();$('sheetBox').hidden=false;$('sheetBox').scrollTop=0;const id=lang;const lab=await batchEn(SHEET_EN,'dstalk-s8-');if(id===lang&&lab){sheetLab=lab;renderSheet();}}
 $('sheetOnly').onclick=()=>{sheetOnly=!sheetOnly;renderSheet();$('sheetBox').scrollTop=0;};
 $('sheetNone').onclick=()=>{sheetItems().forEach(e=>e.keep=false);renderSheet();};
+$('sheetEditBtn').onclick=()=>{sheetEdit=!sheetEdit;renderSheet();};
+$('sheetNewBtn').onclick=async()=>{const v=$('sheetNew').value.trim();if(!v||busy)return;const id=lang;$('sheetNewBtn').disabled=true;
+  try{const t=await translate(prepKo(v),'ko',id);sheetAdd.push({q:v,qt:t,lang:id,keep:true,cat:null});$('sheetNew').value='';renderSheet();}
+  catch(e){status('번역하지 못했습니다. 인터넷 연결을 확인하세요.',true);}finally{$('sheetNewBtn').disabled=false;}};
+$('sheetNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('sheetNewBtn').click();}});
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
@@ -971,13 +997,13 @@ $('copyLog').onclick=async()=>{
 let armed=false;
 $('clearLog').onclick=()=>{const b=$('clearLog');
   if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
-  armed=false;log=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
+  armed=false;log=[];sheetAdd=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
 
 renderLangs();renderCats();renderPhrases();renderReply();loadExtra();renderGuide();renderTpl();renderLog();renderCur();ui();loadVoices();
 try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-13c</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-13d</p>
 </body>
 </html>
