@@ -560,7 +560,7 @@ async function srCheck(code){
   if(code in srLocal)return srLocal[code];
   let st='out';
   try{
-    if(SR.available){
+    if(SR.available&&$('strict').checked){
       let a=await within(SR.available({langs:[code],processLocally:true}),3000);
       if(a==='downloadable'||a==='downloading'){
         const p=Promise.resolve(SR.install({langs:[code],processLocally:true})).then(ok=>{if(ok){srLocal[code]='in';srBadges();}return ok;},()=>false);
@@ -1004,6 +1004,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-13d</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-25</p>
 </body>
 </html>
