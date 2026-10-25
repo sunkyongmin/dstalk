@@ -302,6 +302,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <div class="tag"><span id="ptTag">대답 · 환자</span><span class="hint" id="ptHint">눌러서 환자 말 듣기</span><span class="mic" id="ptMic" hidden>🎤</span></div>
       <p class="main" id="aKo"></p>
       <p class="subt" id="aPt" dir="auto"></p>
+      <p class="subt" id="aEn" lang="en" hidden></p>
       <p class="interim" id="ptInterim" dir="auto"></p>
       <div class="reply" id="reply"></div>
       <button class="sec" id="gBody" type="button" style="margin-top:6px" hidden>🧍 아픈 곳 그림으로 표시하기</button>
@@ -443,7 +444,7 @@ const P=[
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const PT_SILENCE_MS=8000;
+const PT_SILENCE_MS=4000;
 let mode='ask',lang='en',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
@@ -546,7 +547,7 @@ async function externalTranslate(text,from,to){
   }
 }
 async function translate(text,from,to){
-  const t=await localTranslator(from,to);
+  const t=$('strict').checked?await localTranslator(from,to):null;
   if(t)return (await t.translate(text)).trim();
   if($('strict').checked)throw new Error('strict');
   let out=await externalTranslate(text,from,to);
@@ -597,11 +598,11 @@ function ui(){
 }
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
-function answer(a,at){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({q:'',qt:'',back:'',a:'',at:'',kind:mode,lang});c=cur();}c.a=c.a?c.a+' / '+a:a;c.at=c.at?c.at+' / '+at:at;renderLog();renderCur();}
+function answer(a,at,ae){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({q:'',qt:'',back:'',a:'',at:'',kind:mode,lang});c=cur();}c.a=c.a?c.a+' / '+a:a;c.at=c.at?c.at+' / '+at:at;if(ae)c.ae=c.ae?c.ae+' / '+ae:ae;renderLog();renderCur();}
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
   $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
-  $('qMute').hidden=!c.mute;$('saveMy').hidden=!c.q||c.back==='미리 넣은 문구';$('saveMy').textContent=myHas(c.q)?'★ 내 문구에 있음':'☆ 내 문구로 저장';$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;
+  $('qMute').hidden=!c.mute;$('saveMy').hidden=!c.q||c.back==='미리 넣은 문구';$('saveMy').textContent=myHas(c.q)?'★ 내 문구에 있음':'☆ 내 문구로 저장';$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;$('aEn').textContent=c.ae?'영어: '+c.ae:'';$('aEn').hidden=!c.ae;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
   $('aWait').textContent=mode==='tell'?'환자가 물어볼 때는 이 칸을 누르세요. 환자 말이 한국어로 여기에 뜹니다.':c.qt?'대답을 기다리는 중…':'질문 뒤에 환자의 대답이 한국어로 여기에 뜹니다.';
@@ -613,7 +614,7 @@ function renderLog(){
   past.forEach(e=>{const li=el('li');
     const tell=e.kind==='tell';
     if(e.q)li.append(el('span','who',tell?'설명':'질문'),el('span','',e.q),el('span','o',e.qt));
-    if(e.a||!tell){li.append(el('span','who p',tell?'환자':'대답'),el('span','',e.a||'(대답 없음)'));if(e.at)li.append(el('span','o',e.at));}
+    if(e.a||!tell){li.append(el('span','who p',tell?'환자':'대답'),el('span','',e.a||'(대답 없음)'));if(e.at)li.append(el('span','o',e.at));if(e.ae)li.append(el('span','o','영어: '+e.ae));}
     ul.append(li);});
   $('logEmpty').hidden=past.length>0;$('logN').textContent=log.length?'(전체 '+log.length+'건)':'';
 }
@@ -641,8 +642,9 @@ async function handle(text,from,send){
       if(mode==='ask'){side='pt';ptSince=Date.now();}
     }else{
       $('ptInterim').textContent='';status('통역 중…');
+      const enP=l.id==='en'?Promise.resolve(''):translate(text,l.id,'en').catch(()=>'');
       const tr=await translate(text,l.id,'ko');
-      answer(tr,text);
+      answer(tr,text);const c=cur();enP.then(en=>{if(en&&c){c.ae=c.ae?c.ae+' / '+en:en;if(cur()===c)renderCur();renderLog();}});
       side='ko';
     }
   }catch(e){
@@ -688,8 +690,11 @@ function listen(){
     if(side==='pt'&&(srLocal[L().sr]==='none'||Date.now()-ptSince>PT_SILENCE_MS)){side='ko';ui();}
     setTimeout(()=>{if(token===recToken)listen();},mode==='tell'?40:250);
   };
+  if(mySide==='pt'&&mode==='ask'){const chk=()=>{if(token!==recToken||side!=='pt'||busy)return;
+    if(!curPtHeard()&&Date.now()-ptSince>PT_SILENCE_MS){abortRec();side='ko';ui();listen();}else setTimeout(chk,500);};setTimeout(chk,500);}
   try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
 }
+function curPtHeard(){return !!($('ptInterim').textContent||'').trim();}
 function abortRec(){recToken++;try{rec&&rec.abort();}catch(e){}rec=null;}
 /* 아이폰은 앞선 듣기가 완전히 끝나기 전에 다른 언어로 다시 시작하면 이전 언어로 계속 듣는다: 끝날 때까지 기다렸다가 시작 */
 let switching=0;
@@ -1004,6 +1009,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-25</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-25b</p>
 </body>
 </html>
