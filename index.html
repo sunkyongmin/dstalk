@@ -210,6 +210,21 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="flags" id="flags"></div>
   </div>
 </div>
+<div class="picker" id="aiBox" hidden>
+  <div class="picker-in">
+    <div class="picker-head"><p>🤖 검사결과 설명문 (AI)</p><button class="sec" id="aiClose" type="button">닫기 ✕</button></div>
+    <p class="note" style="background:#fff4d6;color:#4a3800;padding:10px 12px;border-radius:10px">⚠ 이 기능만 예외로 <b>붙여넣은 내용이 외부 AI(Claude, 상병 선정 앱과 같은 중계 서버)로 전송</b>됩니다. 이름·등록번호·주민번호·연락처 줄은 자동으로 가리지만, 붙여넣기 전에 <b>검사 결과 부분만</b> 골라 주세요.</p>
+    <label class="note" for="aiText">EMR 검사 결과 붙여넣기</label>
+    <textarea id="aiText" rows="9" style="font:inherit;font-size:14px;line-height:1.5;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)" placeholder="예)&#10;BP 158/96&#10;Glucose 182 / HbA1c 7.4&#10;AST 62 ALT 88&#10;Hb 10.1&#10;UA: protein 1+&#10;Abd US: fatty liver"></textarea>
+    <label class="note" for="aiMemo">의사 메모 (선택 — 환자에게 꼭 전할 말)</label>
+    <input id="aiMemo" style="font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:46px" placeholder="예: 내과 외래 재검, 짜게 먹지 않기">
+    <div id="aiPassRow"><label class="note" for="aiPass">응급실 비밀번호 (상병 선정 앱과 같음 · 이 기기에만 저장)</label>
+    <input id="aiPass" type="password" autocomplete="off" style="font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:46px;width:100%;box-sizing:border-box"></div>
+    <button class="go" id="aiGo" type="button" style="min-height:52px">설명문 만들기</button>
+    <p class="note" id="aiStat"></p>
+    <details><summary class="note">전송될 내용 미리보기</summary><pre id="aiPrev" class="note" style="white-space:pre-wrap"></pre></details>
+  </div>
+</div>
 <div class="picker" id="sheetBox" hidden>
   <div class="picker-in">
     <div class="picker-head"><p id="sheetTitle"></p><button class="sec" id="sheetClose" type="button">닫기 ✕</button></div>
@@ -277,6 +292,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="turn q" id="panKo">
       <div class="tag"><span id="koTag">질문 · 의료진</span><span class="hint" id="koHint">눌러서 한국어 듣기</span><span class="mic" id="koMic" hidden>🎤 듣는 중</span></div>
       <div id="draftBox" hidden>
+        <button class="sec" id="aiOpen" type="button" style="width:100%;min-height:46px;margin-bottom:6px">🤖 의무기록 검사결과로 설명문 만들기 (AI)</button>
         <details id="tpl">
           <summary>검사 결과 입력</summary>
           <div id="tplRows"></div>
@@ -601,7 +617,7 @@ function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog(
 function answer(a,at,ae){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({q:'',qt:'',back:'',a:'',at:'',kind:mode,lang});c=cur();}c.a=c.a?c.a+' / '+a:a;c.at=c.at?c.at+' / '+at:at;if(ae)c.ae=c.ae?c.ae+' / '+ae:ae;renderLog();renderCur();}
 function renderCur(){
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
-  $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':c.back==='미리 넣은 문구'?c.back:'역번역: '+c.back;
+  $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':(c.back==='미리 넣은 문구'||c.ai)?c.back:'역번역: '+c.back;
   $('qMute').hidden=!c.mute;$('saveMy').hidden=!c.q||c.back==='미리 넣은 문구';$('saveMy').textContent=myHas(c.q)?'★ 내 문구에 있음':'☆ 내 문구로 저장';$('sayBtn').hidden=!c.qt;$('aKo').textContent=c.a;$('aPt').textContent=c.at;$('aEn').textContent=c.ae?'영어: '+c.ae:'';$('aEn').hidden=!c.ae;
   $('qWait').hidden=!!c.qt||!!$('koInterim').textContent;
   $('aWait').hidden=!!c.a||!!$('ptInterim').textContent;
@@ -659,6 +675,7 @@ function ui2err(){const s=$('status').textContent;ui();if(running)status(s,true)
 function listen(){
   if(!running||busy||!SR||switching)return;
   if(mode==='tell'&&side==='ko'&&$('tpl').open)return;
+  if(!$('aiBox').hidden)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
   let finalText='';
   const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
@@ -852,6 +869,58 @@ $('sheetNewBtn').onclick=async()=>{const v=$('sheetNew').value.trim();if(!v||bus
   try{const t=await translate(prepKo(v),'ko',id);sheetAdd.push({q:v,qt:t,lang:id,keep:true,cat:null});$('sheetNew').value='';renderSheet();}
   catch(e){status('번역하지 못했습니다. 인터넷 연결을 확인하세요.',true);}finally{$('sheetNewBtn').disabled=false;}};
 $('sheetNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('sheetNewBtn').click();}});
+/* ---------- AI 검사결과 설명문 (dscode 중계 서버) ---------- */
+const AI_PROXY='https://dscode-proxy.sunkyongmin.workers.dev';
+function aiMask(t){return String(t||'').split('\n').map(l=>/(성명|이름|환자명|환자 이름|등록번호|차트번호|주민|생년월일|연락처|전화|주소|보호자)/.test(l)?l.replace(/([:：]\s*|\s)\S.*$/,'$1[가림]'):l).join('\n')
+  .replace(/\d{6}\s*[-–]\s*\d{7}/g,'[주민번호]').replace(/0\d{1,2}[-\s.]?\d{3,4}[-\s.]?\d{4}/g,'[전화]').replace(/\d{7,}/g,'[번호]');}
+function aiPrevUpd(){const m=$('aiMemo').value.trim();$('aiPrev').textContent=aiMask($('aiText').value)+(m?'\n\n[의사 메모] '+aiMask(m):'');}
+function aiSystem(l){return `당신은 한국의 응급실·의료봉사 현장에서 외국인 환자에게 검사 결과를 설명하는 의사를 돕습니다. 의사가 붙여넣은 검사 결과를 읽고, 환자가 이해할 쉬운 한국어 설명과 그 ${l.ko}(${l.nat}) 번역을 만듭니다.
+
+원칙:
+1. 붙여넣은 결과와 의사 메모에 있는 내용만 씁니다. 결과에 없는 검사나 진단을 만들지 않습니다.
+2. 진단을 단정하지 않습니다. "검사에서 ~가 높게 나왔습니다" 수준으로 쓰고, 필요한 경우 "병원에서 다시 확인이 필요합니다"라고 씁니다.
+3. 새 약 이름이나 용량은 쓰지 않습니다. 의사 메모의 지시(재검, 외래 방문, 생활습관)는 그대로 살려 do 항목으로 씁니다.
+4. 한국어는 짧고 쉬운 존댓말로, 한 문장에 한 내용만 씁니다. 번역은 일반인이 읽기 쉬운 ${l.ko} 표현으로 쓰고, 필요하면 의학 용어를 괄호로 덧붙입니다.
+5. 결과가 정상인 항목도 표(rows)에는 넣되, explain 문장은 이상 소견과 해야 할 일 위주로 씁니다.
+
+rows: 아래 항목에 해당하는 결과만 넣습니다.
+- id와 허용 판정(j): bp 혈압(정상/높음/낮음), glu 혈당(정상/높음/낮음), chol 콜레스테롤(정상/높음), hb 빈혈(정상/있음), liver 간 검사 AST·ALT·GGT 등(정상/높음), kid 콩팥 검사 Cr·BUN·eGFR(정상/이상), ua 소변 검사(정상/이상), cxr 가슴 엑스레이(정상/이상), ecg 심전도(정상/이상), us 초음파(정상/이상)
+- val: 대표 수치를 짧게(예: "158/96", "182 mg/dL", "Hb 10.1"). 영상·심전도는 비워 둡니다.
+- det: 정상이 아닐 때만 쉬운 한국어 한 문장(예: "간 수치(AST 62, ALT 88)가 정상보다 높습니다."), det_t: 그 번역. 정상이면 둘 다 빈 문자열.
+위 목록에 없는 검사(갑상선, 요산, 염증 수치 등)는 rows에 넣지 말고 explain 문장으로 씁니다.
+
+explain: 설명 문장(cat "etc")과 환자가 해야 할 일(cat "do"). 최대 10개.
+
+출력: 코드블록 없이 JSON 하나만.
+{"rows":[{"id":"","val":"","j":"","det":"","det_t":""}],"explain":[{"ko":"","t":"","cat":"etc"}]}`;}
+function aiParse(t){t=String(t||'').replace(/```(?:json)?/gi,'').trim();try{return JSON.parse(t)}catch(e){}const m=t.match(/\{[\s\S]*\}/);if(m){try{return JSON.parse(m[0])}catch(e){}}return null;}
+$('aiOpen').onclick=()=>{abortRec();ui();let p='';try{p=localStorage.getItem('dstalk-pass')||'';}catch(e){}$('aiPass').value=p;$('aiPassRow').hidden=!!p;$('aiStat').textContent='';aiPrevUpd();$('aiBox').hidden=false;$('aiBox').scrollTop=0;};
+$('aiClose').onclick=()=>{$('aiBox').hidden=true;ui();listen();};
+$('aiText').addEventListener('input',aiPrevUpd);$('aiMemo').addEventListener('input',aiPrevUpd);
+$('aiGo').onclick=async()=>{
+  const raw=$('aiText').value.trim();if(!raw){$('aiStat').textContent='검사 결과를 붙여넣으세요.';return;}
+  if($('strict').checked){$('aiStat').textContent='"외부 전송 차단"이 켜져 있어 쓸 수 없습니다. 끄고 다시 누르세요.';return;}
+  const pass=$('aiPass').value.trim();if(!pass){$('aiPassRow').hidden=false;$('aiStat').textContent='응급실 비밀번호를 넣으세요.';return;}
+  const l=L(),id=lang,memo=$('aiMemo').value.trim();
+  const user='[환자 언어] '+l.ko+' ('+l.nat+')\n\n[검사 결과]\n'+aiMask(raw)+(memo?'\n\n[의사 메모]\n'+aiMask(memo):'');
+  const b=$('aiGo');b.disabled=true;b.textContent='만드는 중… (10~30초)';$('aiStat').textContent='';
+  try{
+    const r=await fetch(AI_PROXY,{method:'POST',headers:{'content-type':'application/json','x-access-pass':pass},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:3000,system:aiSystem(l),messages:[{role:'user',content:user}]})});
+    if(r.status===401){$('aiPassRow').hidden=false;try{localStorage.removeItem('dstalk-pass');}catch(e){}throw new Error('비밀번호가 틀렸습니다.');}
+    if(!r.ok){let m='HTTP '+r.status;try{const e=await r.json();m+=' '+(e.error&&e.error.message||'');}catch(x){}throw new Error(m);}
+    try{localStorage.setItem('dstalk-pass',pass);}catch(e){}$('aiPassRow').hidden=true;
+    const d=await r.json();const j=aiParse((d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join(''));
+    if(!j||(!(j.rows||[]).length&&!(j.explain||[]).length))throw new Error('응답을 해석하지 못했습니다. 다시 눌러 보세요.');
+    if(id!==lang)throw new Error('만드는 중에 언어가 바뀌었습니다. 다시 눌러 주세요.');
+    const rows=(j.rows||[]).filter(x=>x&&TPL_O[x.id]).map(x=>({id:x.id,val:String(x.val||'').slice(0,30),j:TPL_O[x.id].includes(x.j)?x.j:'',det:String(x.det||''),noteQ:String(x.det||''),noteT:String(x.det_t||'')}));
+    const parts=(j.explain||[]).filter(x=>x&&x.ko).slice(0,12).map(x=>({q:String(x.ko),qt:String(x.t||''),cat:x.cat==='do'?'do':'etc',keep:true}));
+    const c={q:parts.map(p=>p.q).join(' ')||'검사 결과 설명',qt:parts.map(p=>p.qt).join(' '),back:'AI 설명문 (의료진 확인 필요)',a:'',at:'',kind:'tell',lang:id,parts,tpl:rows,ai:true};
+    log.push(c);renderLog();renderCur();
+    $('aiBox').hidden=true;$('aiText').value='';$('aiMemo').value='';
+    await openSheet();
+  }catch(e){$('aiStat').textContent='⚠ '+(e&&e.message||e)+(e instanceof TypeError?' (인터넷 연결이나 병원 네트워크 차단을 확인하세요)':'');}
+  finally{b.disabled=false;b.textContent='설명문 만들기';}
+};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
@@ -1009,6 +1078,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-25b</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-29</p>
 </body>
 </html>
