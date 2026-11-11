@@ -678,13 +678,14 @@ function listen(){
   if(mode==='tell'&&side==='ko'&&$('tpl').open)return;
   if(!$('aiBox').hidden)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
-  let finalText='';
+  let finalText='',lastInter='';
   const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
   const r=new SR();rec=r;r.lang=code;r.interimResults=true;r.continuous=cont;r.maxAlternatives=1;
   if(srLocal[code]==='in'){try{r.processLocally=true;}catch(e){}}
   r.onresult=e=>{
     if(token!==recToken)return;let inter='';
     for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal){if(cont)appendDraft(t);else finalText+=t;}else inter+=t;}
+    if(inter)lastInter=inter;
     if(mySide==='ko')curInterim=inter;
     if(mySide==='pt')ptSince=Date.now();
     $(mySide==='ko'?'koInterim':'ptInterim').textContent=inter||finalText;$(mySide==='ko'?'qWait':'aWait').hidden=true;
@@ -702,14 +703,19 @@ function listen(){
   };
   r.onend=()=>{
     if(token!==recToken)return;
-    const text=finalText.trim();
+    /* 아이폰 등은 '확정' 결과 없이 끝나는 일이 있어, 그때는 마지막 중간 결과를 그대로 통역 */
+    const text=(finalText||(!cont?lastInter:'')).trim();
     if(text){handle(text,mySide);return;}
     if(!running)return;
     if(side==='pt'&&(srLocal[L().sr]==='none'||Date.now()-ptSince>PT_SILENCE_MS)){side='ko';ui();}
     setTimeout(()=>{if(token===recToken)listen();},mode==='tell'?40:250);
   };
+  if(mySide==='pt'){$('ptInterim').textContent='';}
   if(mySide==='pt'&&mode==='ask'){const chk=()=>{if(token!==recToken||side!=='pt'||busy)return;
-    if(!curPtHeard()&&Date.now()-ptSince>PT_SILENCE_MS){abortRec();side='ko';ui();listen();}else setTimeout(chk,500);};setTimeout(chk,500);}
+    if(!curPtHeard()&&Date.now()-ptSince>PT_SILENCE_MS){abortRec();side='ko';ui();listen();return;}
+    /* 말이 멈췄는데 인식이 끝나지 않으면 강제로 마무리해 통역 */
+    if(curPtHeard()&&Date.now()-ptSince>2500){try{r.stop();}catch(e){}setTimeout(()=>{if(token===recToken&&rec===r){const t=lastInter.trim();abortRec();if(t)handle(t,'pt');else listen();}},1500);return;}
+    setTimeout(chk,500);};setTimeout(chk,500);}
   try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
 }
 function curPtHeard(){return !!($('ptInterim').textContent||'').trim();}
@@ -1079,6 +1085,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-10-29</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-11</p>
 </body>
 </html>
