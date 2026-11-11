@@ -285,6 +285,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   <div class="mlab"><span class="n">1</span>🎤 음성 <small id="m1note">말하면 자동으로 통역</small></div>
   <div class="bar">
     <button class="go" id="go" type="button">통역 시작</button>
+    <label class="strict" id="sayRow" style="font-size:15px;min-height:40px"><input type="checkbox" id="sayOn" checked style="width:22px;height:22px"> 🔊 질문 소리 내어 읽기 <small>(끄면 화면만 보여주고 바로 환자 말을 듣습니다)</small></label>
   </div>
   <p class="status" id="status" aria-live="polite">시작을 누르면 의료진의 질문(한국어)부터 듣습니다. 통역해서 읽어준 뒤 자동으로 환자의 대답을 듣습니다.</p>
 
@@ -600,7 +601,7 @@ async function prepare(){
 }
 
 /* ---------- 화면 ---------- */
-function ui(){
+function ui(){$('sayRow').hidden=mode!=='ask';
   const l=L();
   $('go').textContent=running?'통역 멈춤':'통역 시작';$('go').classList.toggle('on',running);
   const paused=mode==='tell'&&$('tpl').open;const lk=running&&!busy&&side==='ko'&&!paused,lp=running&&!busy&&side==='pt';
@@ -655,7 +656,7 @@ async function handle(text,from,send){
       const c=ask(text,tr);if(parts){c.parts=parts;let hit2=false;parts.forEach(p=>{if(tplSet.has(p.q)){p.src='tpl';hit2=true;}});if(hit2&&tplSnap){c.tpl=tplSnap;c.tpl.forEach(r=>{if(r.noteQ){const p=parts.find(x=>x.q===r.noteQ);r.noteT=p?p.qt:'';}});tplSnap=null;tplSet=new Set();}}
       if(hit){c.back='미리 넣은 문구';renderCur();}
       else translate(tr,l.id,'ko').then(b=>{c.back=b;if(cur()===c)renderCur();}).catch(()=>{});
-      if(mode==='ask'){status('🔊 '+l.ko+'로 읽는 중…');if(!await speak(tr,l.id)){c.mute=true;renderCur();}}
+      if(mode==='ask'&&$('sayOn').checked){status('🔊 '+l.ko+'로 읽는 중…');if(!await speak(tr,l.id)){c.mute=true;renderCur();}}
       if(mode==='ask'){side='pt';ptSince=Date.now();}
     }else{
       $('ptInterim').textContent='';status('통역 중…');
@@ -928,6 +929,8 @@ $('aiGo').onclick=async()=>{
   }catch(e){$('aiStat').textContent='⚠ '+(e&&e.message||e)+(e instanceof TypeError?' (인터넷 연결이나 병원 네트워크 차단을 확인하세요)':'');}
   finally{b.disabled=false;b.textContent='설명문 만들기';}
 };
+try{if(localStorage.getItem('dstalk-say')==='0')$('sayOn').checked=false;}catch(e){}
+$('sayOn').onchange=()=>{try{localStorage.setItem('dstalk-say',$('sayOn').checked?'1':'0');}catch(e){}if(!$('sayOn').checked)stopSpeak();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
@@ -950,7 +953,7 @@ async function askPhrase(ko,topic){
   if(!t){status('통역 중…');try{t=await translate(prepKo(ko),'ko',lang);phraseCache[lang+'|'+ko]=t;}
     catch(e){busy=false;ui();status(e&&e.message==='strict'?'이 언어는 기기 안에서 번역할 수 없습니다. "외부 전송 차단"을 끄세요.':'통역하지 못했습니다. 인터넷 연결을 확인하세요.',true);listen();return false;}}
   const c=ask(ko,t);c.topic=topic||'';if(pre){c.back='미리 넣은 문구';renderCur();}
-  if(!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();if(!running)status('');listen();return true;
+  if(!(mode==='ask'&&!$('sayOn').checked)&&!await speak(t,lang)){c.mute=true;renderCur();}busy=false;if(mode==='ask'){side='pt';ptSince=Date.now();}ui();if(!running)status('');listen();return true;
 }
 function renderPhrases(){
   const box=$('phrases');box.textContent='';const l=L();const items=phList(cat);
@@ -1085,6 +1088,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-12</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-12b</p>
 </body>
 </html>
