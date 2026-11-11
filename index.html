@@ -461,7 +461,7 @@ const P=[
 const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const PT_SILENCE_MS=4000;
+const PT_SILENCE_MS=4000,FAST_MS=1000;
 let mode='ask',lang='en',cat='증상',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
@@ -488,10 +488,10 @@ function speakRaw(text,code){return new Promise(res=>{
   let done=false,started=false;const fin=ok=>{if(!done){done=true;res(ok);}};curFin=fin;
   try{
     if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);keepUtter=u;u.voice=v;u.lang=v.lang;u.rate=.92;
+    const u=new SpeechSynthesisUtterance(text);keepUtter=u;u.voice=v;u.lang=v.lang;u.rate=1;
     u.onstart=()=>{started=true;};u.onend=()=>fin(true);u.onerror=()=>{if(started||speakStopped)fin(true);else{done=true;res(gtts(text,code));}};
     speechSynthesis.speak(u);try{speechSynthesis.resume();}catch(e){}
-    setTimeout(()=>{if(!started&&!done&&!speakStopped){done=true;try{speechSynthesis.cancel();}catch(e){}res(gtts(text,code));}},2500);
+    setTimeout(()=>{if(!started&&!done&&!speakStopped){done=true;try{speechSynthesis.cancel();}catch(e){}res(gtts(text,code));}},1500);
     setTimeout(()=>fin(true),4000+text.length*200);
   }catch(e){fin(false);}
 });}
@@ -678,14 +678,14 @@ function listen(){
   if(mode==='tell'&&side==='ko'&&$('tpl').open)return;
   if(!$('aiBox').hidden)return;
   const token=++recToken;const mySide=side;const l=L();const code=mySide==='ko'?'ko-KR':l.sr;
-  let finalText='',lastInter='';
+  let finalText='',lastInter='',lastRes=0;
   const cont=mode==='tell'&&mySide==='ko'&&!/Android/i.test(navigator.userAgent);
   const r=new SR();rec=r;r.lang=code;r.interimResults=true;r.continuous=cont;r.maxAlternatives=1;
   if(srLocal[code]==='in'){try{r.processLocally=true;}catch(e){}}
   r.onresult=e=>{
     if(token!==recToken)return;let inter='';
     for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal){if(cont)appendDraft(t);else finalText+=t;}else inter+=t;}
-    if(inter)lastInter=inter;
+    if(inter)lastInter=inter;lastRes=Date.now();
     if(mySide==='ko')curInterim=inter;
     if(mySide==='pt')ptSince=Date.now();
     $(mySide==='ko'?'koInterim':'ptInterim').textContent=inter||finalText;$(mySide==='ko'?'qWait':'aWait').hidden=true;
@@ -708,14 +708,14 @@ function listen(){
     if(text){handle(text,mySide);return;}
     if(!running)return;
     if(side==='pt'&&(srLocal[L().sr]==='none'||Date.now()-ptSince>PT_SILENCE_MS)){side='ko';ui();}
-    setTimeout(()=>{if(token===recToken)listen();},mode==='tell'?40:250);
+    setTimeout(()=>{if(token===recToken)listen();},40);
   };
   if(mySide==='pt'){$('ptInterim').textContent='';}
-  if(mySide==='pt'&&mode==='ask'){const chk=()=>{if(token!==recToken||side!=='pt'||busy)return;
-    if(!curPtHeard()&&Date.now()-ptSince>PT_SILENCE_MS){abortRec();side='ko';ui();listen();return;}
-    /* 말이 멈췄는데 인식이 끝나지 않으면 강제로 마무리해 통역 */
-    if(curPtHeard()&&Date.now()-ptSince>2500){try{r.stop();}catch(e){}setTimeout(()=>{if(token===recToken&&rec===r){const t=lastInter.trim();abortRec();if(t)handle(t,'pt');else listen();}},1500);return;}
-    setTimeout(chk,500);};setTimeout(chk,500);}
+  if(!cont){const chk=()=>{if(token!==recToken||busy||rec!==r)return;
+    if(mySide==='pt'&&mode==='ask'&&side==='pt'&&!lastRes&&Date.now()-ptSince>PT_SILENCE_MS){abortRec();side='ko';ui();listen();return;}
+    /* 말이 1초 멈추면 브라우저가 끝내기를 기다리지 않고 바로 통역 */
+    if(lastRes&&Date.now()-lastRes>FAST_MS){const t=(finalText||lastInter).trim();if(t){abortRec();handle(t,mySide);return;}}
+    setTimeout(chk,200);};setTimeout(chk,200);}
   try{r.start();}catch(e){setTimeout(()=>{if(token===recToken)listen();},600);}
 }
 function curPtHeard(){return !!($('ptInterim').textContent||'').trim();}
@@ -1085,6 +1085,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-11</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-12</p>
 </body>
 </html>
