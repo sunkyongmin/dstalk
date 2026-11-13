@@ -1081,13 +1081,13 @@ $('copyLog').onclick=async()=>{
 let armed=false;
 $('clearLog').onclick=()=>{const b=$('clearLog');
   if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
-  armed=false;log=[];sheetAdd=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';};
+  armed=false;stopSpeak();abortRec();$('draft').value='';curInterim='';$('koInterim').textContent='';$('ptInterim').textContent='';side='ko';log=[];sheetAdd=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';ui();if(running){status('기록을 지웠습니다. 다시 질문하세요.');listen();}};
 
 renderLangs();renderCats();renderPhrases();renderReply();loadExtra();renderGuide();renderTpl();renderLog();renderCur();ui();loadVoices();
 try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-12b</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-13</p>
 </body>
 </html>
