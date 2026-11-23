@@ -342,6 +342,13 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
   <details class="qp">
     <summary class="mlab"><span class="n">3</span>📋 빠른 문구 <small>누르면 바로 통역</small><span class="chev" aria-hidden="true">▾</span></summary>
     <div class="chips" id="cats" style="padding-bottom:10px"></div>
+    <div id="catEdit" hidden style="border:1px dashed var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
+      <p class="note" style="margin:0 0 6px">분류 편집 <small>(이 기기에만 저장)</small></p>
+      <div class="typed" id="catRenRow"><input id="catName" autocomplete="off" aria-label="분류 이름"><button class="sec" id="catRen" type="button">이름 바꾸기</button></div>
+      <div class="btnrow" style="padding:6px 0" id="catBtnRow"><button class="sec" id="catLeft" type="button">◀ 앞으로</button><button class="sec" id="catRight" type="button">뒤로 ▶</button><button class="sec" id="catDel" type="button">이 분류 삭제</button></div>
+      <div class="typed"><input id="catNew" autocomplete="off" aria-label="새 분류" placeholder="새 분류 이름 (예: 소아, 산과)"><button class="sec" id="catAdd" type="button">분류 추가</button></div>
+      <div class="btnrow" style="padding-top:6px"><button class="sec" id="catReset" type="button">분류 목록을 기본으로</button></div>
+    </div>
     <div class="btnrow" style="padding-bottom:8px"><button class="sec" id="editPh" type="button">✎ 문구 편집</button></div>
     <p class="note" id="phraseNote" style="padding-bottom:8px"></p>
     <div class="list" id="phrases"></div>
@@ -791,7 +798,7 @@ const INTRO='시작을 누르면 의료진의 질문(한국어)부터 듣습니�
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
-  cat=m==='tell'?'검사결과':'증상';renderCats();renderPhrases();renderGuide();
+  cat=m==='tell'?'검사결과':'증상';fixCat();renderCats();renderPhrases();renderGuide();
   side='ko';ui();if(running)switchListen();else status(m==='tell'?'':INTRO);}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
@@ -974,8 +981,8 @@ $('undoBtn').onclick=undoLast;
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
-let phEdit=false,myPh={hide:[],edit:{},add:[]};
-try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={hide:x.hide||[],edit:x.edit||{},add:(x.add||[]).map(a=>a[0]==='안내'?['퇴실 안내',a[1]]:a)};}catch(e){}
+let phEdit=false,myPh={cats:{},hide:[],edit:{},add:[]};
+try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={cats:x.cats||{},hide:x.hide||[],edit:x.edit||{},add:(x.add||[]).map(a=>a[0]==='안내'?['퇴실 안내',a[1]]:a)};}catch(e){}
 function saveMyPh(){try{localStorage.setItem('dstalk-myph',JSON.stringify(myPh));}catch(e){}}
 function myHas(ko){return !!ko&&myPh.add.some(a=>a[0]===myCat()&&normKo(a[1])===normKo(ko));}
 function phList(c){
@@ -984,7 +991,13 @@ function phList(c){
   myPh.add.forEach((a,i)=>{if(a[0]===c)out.push({ko:a[1],idx:i,builtin:false});});
   return out;
 }
-function renderCats(){const box=$('cats');box.textContent='';[myCat(),...(mode==='tell'?CATS_TELL:CATS_ASK)].forEach(c=>{const b=el('button','chip',c.trim());b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
+const catKey=()=>mode==='tell'?'tell':'ask';
+function catList(){const l=myPh.cats&&myPh.cats[catKey()];return Array.isArray(l)&&l.length?l:(mode==='tell'?CATS_TELL:CATS_ASK).map(c=>[c,c]);}
+function catName(id){if(isMy(id))return id.trim();const f=catList().find(c=>c[0]===id);return f?f[1]:id;}
+function setCats(l){if(!myPh.cats)myPh.cats={};myPh.cats[catKey()]=l;saveMyPh();}
+function fixCat(){if(!isMy(cat)&&!catList().some(c=>c[0]===cat)){const l=catList();cat=l.length?l[0][0]:myCat();}}
+function renderCatEdit(){const on=phEdit&&!isMy(cat);$('catEdit').hidden=!phEdit;$('catRenRow').hidden=!on;$('catBtnRow').hidden=!on;if(on)$('catName').value=catName(cat);}
+function renderCats(){fixCat();renderCatEdit();const box=$('cats');box.textContent='';[[myCat(),myCat()],...catList()].map(x=>x[0]).forEach(c=>{const b=el('button','chip',catName(c));b.type='button';b.setAttribute('aria-pressed',c===cat);b.onclick=()=>{cat=c;renderCats();renderPhrases();};box.append(b);});}
 let phraseCache={};
 async function askPhrase(ko,topic){
   if(busy)return false;unlockPlayer();unlockSpeech();abortRec();busy=true;ui();
@@ -999,7 +1012,7 @@ function renderPhrases(){
   const box=$('phrases');box.textContent='';const l=L();const items=phList(cat);
   $('editPh').textContent=phEdit?'✓ 편집 마치기':'✎ 문구 편집';$('phAdd').hidden=!phEdit;
   $('phReset').hidden=isMy(cat);
-  $('phNew').placeholder=isMy(cat)?'자주 쓰는 문구를 한국어로 입력':'"'+cat.trim()+'"에 넣을 새 문구를 한국어로 입력';
+  $('phNew').placeholder=isMy(cat)?'자주 쓰는 문구를 한국어로 입력':'"'+catName(cat)+'"에 넣을 새 문구를 한국어로 입력';
   const anyPre=l.col!=null&&items.some(x=>x.builtin&&!x.edited&&x.p.length>2);
   $('phraseNote').textContent=phEdit?'문구를 고치면 미리 넣은 번역 대신 기계 번역을 씁니다. 이 기기에만 저장됩니다.':
     isMy(cat)&&!items.length?'자주 쓰는 문구를 저장해 두는 곳입니다. "✎ 문구 편집"으로 추가하거나, 통역한 문장 아래의 "☆ 내 문구로 저장"을 누르세요. 이 기기에만 저장됩니다.':
@@ -1015,7 +1028,18 @@ function renderPhrases(){
     if(pre){const f=el('span','f',it.p[2+l.col]);f.dir='auto';b.append(f);}
     b.onclick=()=>askPhrase(it.ko);box.append(b);});
 }
-$('editPh').onclick=()=>{phEdit=!phEdit;renderPhrases();};
+$('editPh').onclick=()=>{phEdit=!phEdit;renderCats();renderPhrases();};
+$('catRen').onclick=()=>{const v=$('catName').value.trim();if(!v||isMy(cat))return;setCats(catList().map(c=>c[0]===cat?[c[0],v]:c.slice()));renderCats();renderPhrases();};
+$('catName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('catRen').click();}});
+const catMove=d=>{const l=catList().map(c=>c.slice());const i=l.findIndex(c=>c[0]===cat),j=i+d;if(i<0||j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];setCats(l);renderCats();};
+$('catLeft').onclick=()=>catMove(-1);$('catRight').onclick=()=>catMove(1);
+let catDelArm=false;$('catDel').onclick=()=>{const b=$('catDel');if(isMy(cat))return;
+  if(!catDelArm){catDelArm=true;b.textContent='한 번 더 누르면 "'+catName(cat)+'" 삭제';setTimeout(()=>{catDelArm=false;b.textContent='이 분류 삭제';},3000);return;}
+  catDelArm=false;b.textContent='이 분류 삭제';const id=cat;setCats(catList().filter(c=>c[0]!==id).map(c=>c.slice()));myPh.add=myPh.add.filter(a=>a[0]!==id);saveMyPh();cat='';renderCats();renderPhrases();};
+$('catAdd').onclick=()=>{const v=$('catNew').value.trim();if(!v)return;if(catList().some(c=>c[1]===v)){cat=catList().find(c=>c[1]===v)[0];}else{const id='c'+Date.now();setCats([...catList().map(c=>c.slice()),[id,v]]);cat=id;}$('catNew').value='';renderCats();renderPhrases();};
+$('catNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('catAdd').click();}});
+let catResetArm=false;$('catReset').onclick=()=>{const b=$('catReset');if(!catResetArm){catResetArm=true;b.textContent='한 번 더 누르면 기본 분류로 되돌립니다';setTimeout(()=>{catResetArm=false;b.textContent='분류 목록을 기본으로';},3000);return;}
+  catResetArm=false;b.textContent='분류 목록을 기본으로';setCats(null);renderCats();renderPhrases();};
 function addMy(c,v){v=(v||'').trim();if(!v)return false;if(myPh.add.some(a=>a[0]===c&&normKo(a[1])===normKo(v)))return false;myPh.add.push([c,v]);saveMyPh();return true;}
 $('phNewBtn').onclick=()=>{if(addMy(cat,$('phNew').value)){$('phNew').value='';renderPhrases();}};
 $('phNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('phNewBtn').click();}});
@@ -1128,6 +1152,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-23</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-23b</p>
 </body>
 </html>
