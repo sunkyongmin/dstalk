@@ -981,13 +981,13 @@ $('undoBtn').onclick=undoLast;
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
-let phEdit=false,myPh={cats:{},hide:[],edit:{},add:[]};
-try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={cats:x.cats||{},hide:x.hide||[],edit:x.edit||{},add:(x.add||[]).map(a=>a[0]==='안내'?['퇴실 안내',a[1]]:a)};}catch(e){}
+let phEdit=false,myPh={move:{},cats:{},hide:[],edit:{},add:[]};
+try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={move:x.move||{},cats:x.cats||{},hide:x.hide||[],edit:x.edit||{},add:(x.add||[]).map(a=>a[0]==='안내'?['퇴실 안내',a[1]]:a)};}catch(e){}
 function saveMyPh(){try{localStorage.setItem('dstalk-myph',JSON.stringify(myPh));}catch(e){}}
 function myHas(ko){return !!ko&&myPh.add.some(a=>a[0]===myCat()&&normKo(a[1])===normKo(ko));}
 function phList(c){
   const out=[];
-  if(!isMy(c))P.filter(p=>p[0]===c&&!myPh.hide.includes(p[1])).forEach(p=>{const e=myPh.edit[p[1]];out.push({ko:e||p[1],orig:p[1],builtin:true,edited:!!e,p});});
+  const mv=myPh.move||{};P.filter(p=>(mv[p[1]]||p[0])===c&&!myPh.hide.includes(p[1])).forEach(p=>{const e=myPh.edit[p[1]];out.push({ko:e||p[1],orig:p[1],builtin:true,edited:!!e,p});});
   myPh.add.forEach((a,i)=>{if(a[0]===c)out.push({ko:a[1],idx:i,builtin:false});});
   return out;
 }
@@ -1022,7 +1022,13 @@ function renderPhrases(){
       i.onchange=()=>{const v=i.value.trim();if(!v)return;
         if(it.builtin){if(v===it.orig)delete myPh.edit[it.orig];else myPh.edit[it.orig]=v;}else myPh.add[it.idx][1]=v;saveMyPh();renderPhrases();};
       const d=el('button','','삭제');d.type='button';d.onclick=()=>{if(it.builtin){myPh.hide.push(it.orig);delete myPh.edit[it.orig];}else myPh.add.splice(it.idx,1);saveMyPh();renderPhrases();};
-      r.append(i,d);box.append(r);return;}
+      const m=el('select');m.setAttribute('aria-label','다른 분류로 옮기기');m.style.cssText='font:inherit;font-size:14px;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);max-width:7.5em';
+      const o0=el('option','','옮기기 ▸');o0.value='';m.append(o0);
+      [[myCat(),myCat()],...catList()].filter(c=>c[0]!==cat).forEach(c=>{const o=el('option','',isMy(c[0])?c[0].trim():c[1]);o.value=c[0];m.append(o);});
+      m.onchange=()=>{const to=m.value;if(!to)return;if(!myPh.move)myPh.move={};
+        if(it.builtin){if(to===it.p[0])delete myPh.move[it.orig];else myPh.move[it.orig]=to;}else myPh.add[it.idx][0]=to;
+        saveMyPh();renderPhrases();status('"'+it.ko+'" → '+catName(to)+'(으)로 옮겼습니다.');};
+      r.style.gridTemplateColumns='1fr auto auto';r.append(i,m,d);box.append(r);return;}
     const b=el('button','phrase');b.type='button';b.append(el('span','k',it.ko));
     const pre=it.builtin&&!it.edited&&l.col!=null&&it.p.length>2;
     if(pre){const f=el('span','f',it.p[2+l.col]);f.dir='auto';b.append(f);}
@@ -1045,7 +1051,7 @@ $('phNewBtn').onclick=()=>{if(addMy(cat,$('phNew').value)){$('phNew').value='';r
 $('phNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('phNewBtn').click();}});
 let resetArm=false;
 $('phReset').onclick=()=>{const b=$('phReset');if(!resetArm){resetArm=true;b.textContent='한 번 더 누르면 되돌립니다';setTimeout(()=>{resetArm=false;b.textContent='이 분류를 기본 문구로 되돌리기';},3000);return;}
-  resetArm=false;const ks=P.filter(p=>p[0]===cat).map(p=>p[1]);myPh.hide=myPh.hide.filter(k=>!ks.includes(k));ks.forEach(k=>delete myPh.edit[k]);myPh.add=myPh.add.filter(a=>a[0]!==cat);saveMyPh();b.textContent='이 분류를 기본 문구로 되돌리기';renderPhrases();};
+  resetArm=false;const mv=myPh.move||{};Object.keys(mv).forEach(k=>{const p=P.find(x=>x[1]===k);if(mv[k]===cat||(p&&p[0]===cat))delete mv[k];});const ks=P.filter(p=>p[0]===cat).map(p=>p[1]);myPh.hide=myPh.hide.filter(k=>!ks.includes(k));ks.forEach(k=>delete myPh.edit[k]);myPh.add=myPh.add.filter(a=>a[0]!==cat);saveMyPh();b.textContent='이 분류를 기본 문구로 되돌리기';renderPhrases();};
 $('saveMy').onclick=()=>{const c=cur();if(!c||!c.q)return;if(!myHas(c.q)){addMy(myCat(),c.q);}renderCur();if(isMy(cat))renderPhrases();};
 let gi=0;function renderGuide(){$('sheetOpen').hidden=mode!=='tell';}
 /* ---------- 아픈 곳 그림 ---------- */
@@ -1152,6 +1158,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-23b</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-23c</p>
 </body>
 </html>
