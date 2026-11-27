@@ -330,7 +330,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
       <p class="subt" id="aPt" dir="auto"></p>
       <p class="subt" id="aEn" lang="en" hidden></p>
       <p class="interim" id="ptInterim" dir="auto"></p>
-      <div class="reply" id="reply"></div>
+      <div class="reply" id="reply" hidden></div>
       <button class="sec" id="gBody" type="button" style="margin-top:6px" hidden>🧍 아픈 곳 그림으로 표시하기</button>
       <div class="painlab" hidden><span>0 🙂</span><span id="painTitle">0 – 10</span><span>😣 10</span></div>
       <div class="pain" id="pain" hidden></div>
@@ -1017,7 +1017,7 @@ function updMini(){const c=cur();const has=c&&(c.qt||c.a);
   const show=has&&!qaVisible&&miniClosedFor!==c&&$('picker').hidden&&$('sheetBox').hidden&&$('aiBox').hidden;
   $('miniQA').hidden=!show;document.body.classList.toggle('miniOn',!!show);if(!show)return;
   $('miniPt').textContent=c.qt||'';$('miniKo').textContent=c.q||'';$('miniPt').hidden=!c.qt;
-  const yn=$('miniYN');yn.textContent='';yn.hidden=mode!=='ask'||!c.qt;if(!yn.hidden)[...document.querySelectorAll('#reply button')].forEach(rb=>{const b=el('button');b.type='button';b.style.cssText='flex:1;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px';b.textContent=rb.querySelector('.f').textContent;b.onclick=e=>{e.stopPropagation();rb.click();};yn.append(b);});
+  const yn=$('miniYN');yn.textContent='';yn.hidden=true;if(!yn.hidden)[...document.querySelectorAll('#reply button')].forEach(rb=>{const b=el('button');b.type='button';b.style.cssText='flex:1;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px';b.textContent=rb.querySelector('.f').textContent;b.onclick=e=>{e.stopPropagation();rb.click();};yn.append(b);});
   const m=$('miniAns');m.hidden=!c.a;m.textContent='';if(c.a){m.append('대답: '+c.a);const sm=el('small','',c.at||'');sm.dir='auto';m.append(sm);}}
 try{new IntersectionObserver(es=>{qaVisible=es.some(e=>e.isIntersecting);updMini();},{threshold:0.15}).observe(document.querySelector('.qa'));}catch(e){}
 $('miniQA').onclick=e=>{if(e.target.id==='miniX')return;document.querySelector('.qa').scrollIntoView({behavior:'smooth',block:'start'});};
@@ -1203,6 +1203,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27b</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27c</p>
 </body>
 </html>
