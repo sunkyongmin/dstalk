@@ -220,7 +220,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="flags" id="flags"></div>
   </div>
 </div>
-<div id="miniQA" hidden role="region" aria-label="통역 결과"><button id="miniX" type="button" aria-label="닫기">✕</button><p class="mpt" id="miniPt" dir="auto"></p><p class="mko" id="miniKo"></p><p class="mans" id="miniAns" hidden></p><div id="miniYN" style="display:flex;gap:6px;margin-top:8px"></div></div>
+<div id="miniQA" hidden role="region" aria-label="통역 결과"><button id="miniX" type="button" aria-label="닫기">✕</button><p class="mpt" id="miniPt" dir="auto"></p><p class="mko" id="miniKo"></p><button id="miniSay" type="button" style="margin-top:8px;min-height:46px;padding:0 16px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft);color:var(--ink);font:inherit;font-size:16px;font-weight:600">🔊 번역문 읽어주기</button><p class="mans" id="miniAns" hidden></p><div id="miniYN" style="display:flex;gap:6px;margin-top:8px"></div></div>
 <div class="picker" id="aiBox" hidden>
   <div class="picker-in">
     <div class="picker-head"><p>🤖 검사결과 설명문 (AI)</p><button class="sec" id="aiClose" type="button">닫기 ✕</button></div>
@@ -567,7 +567,7 @@ let keepUtter=null,speechUnlocked=false;
 function unlockSpeech(){if(speechUnlocked||!window.speechSynthesis)return;speechUnlocked=true;
   try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;keepUtter=u;speechSynthesis.speak(u);}catch(e){}}
 let speaking=false,speakStopped=false,curFin=null;
-function updSay(){const b=$('sayBtn');if(b)b.textContent=speaking?'■ 읽기 중단':'🔊 번역문 읽어주기';}
+function updSay(){const t=speaking?'■ 읽기 중단':'🔊 번역문 읽어주기';['sayBtn','miniSay'].forEach(id=>{const b=$(id);if(b)b.textContent=t;});}
 function stopSpeak(){speakStopped=true;try{speechSynthesis.cancel();}catch(e){}try{player.pause();}catch(e){}if(curFin)curFin(true);}
 async function speak(text,code){speaking=true;speakStopped=false;updSay();try{return await speakRaw(text,code);}finally{speaking=false;curFin=null;updSay();}}
 function speakRaw(text,code){return new Promise(res=>{
@@ -1032,11 +1032,12 @@ let qaVisible=true,miniClosedFor=null;
 function updMini(){const c=cur();const has=c&&(c.qt||c.a);
   const show=has&&!qaVisible&&miniClosedFor!==c&&$('picker').hidden&&$('sheetBox').hidden&&$('aiBox').hidden;
   $('miniQA').hidden=!show;document.body.classList.toggle('miniOn',!!show);if(!show)return;
-  $('miniPt').textContent=c.qt||'';$('miniKo').textContent=c.q||'';$('miniPt').hidden=!c.qt;
+  $('miniPt').textContent=c.qt||'';$('miniKo').textContent=c.q||'';$('miniPt').hidden=!c.qt;$('miniSay').hidden=!c.qt;
   const yn=$('miniYN');yn.textContent='';yn.hidden=true;if(!yn.hidden)[...document.querySelectorAll('#reply button')].forEach(rb=>{const b=el('button');b.type='button';b.style.cssText='flex:1;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px';b.textContent=rb.querySelector('.f').textContent;b.onclick=e=>{e.stopPropagation();rb.click();};yn.append(b);});
   const m=$('miniAns');m.hidden=!c.a;m.textContent='';if(c.a){m.append('대답: '+c.a);const sm=el('small','',c.at||'');sm.dir='auto';m.append(sm);}}
 try{new IntersectionObserver(es=>{qaVisible=es.some(e=>e.isIntersecting);updMini();},{threshold:0.15}).observe(document.querySelector('.qa'));}catch(e){}
 $('miniQA').onclick=e=>{if(e.target.id==='miniX')return;document.querySelector('.qa').scrollIntoView({behavior:'smooth',block:'start'});};
+$('miniSay').onclick=e=>{e.stopPropagation();$('sayBtn').click();};
 $('miniX').onclick=e=>{e.stopPropagation();miniClosedFor=cur();updMini();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
@@ -1223,6 +1224,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27d</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27e</p>
 </body>
 </html>
