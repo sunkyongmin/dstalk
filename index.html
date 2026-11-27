@@ -26,6 +26,13 @@
   --ok:#4FC4AE; --ext:#F0906F; --ext-soft:#3B211A; --live:#FF6B6B; color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+#miniQA{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:15;max-width:900px;margin:0 auto;background:var(--surface);color:var(--ink);border:2px solid var(--accent,#1F6B5C);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:10px 44px 10px 14px;max-height:42vh;overflow:auto;cursor:pointer}
+#miniQA .mpt{font-size:20px;font-weight:700;line-height:1.4;margin:0}
+#miniQA .mko{font-size:13px;color:var(--muted);margin:2px 0 0}
+#miniQA .mans{font-size:17px;font-weight:600;margin:6px 0 0;padding-top:6px;border-top:1px solid var(--line)}
+#miniQA .mans small{display:block;font-size:13px;font-weight:400;color:var(--muted)}
+#miniX{position:absolute;top:6px;right:6px;width:34px;height:34px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--ink);font-size:16px}
+body.miniOn{padding-bottom:30vh}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5}
 .wrap{max-width:900px;margin:0 auto;padding:14px 16px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
 h1{font-size:20px;margin:0;font-weight:700}
@@ -211,6 +218,7 @@ textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var
     <div class="flags" id="flags"></div>
   </div>
 </div>
+<div id="miniQA" hidden role="region" aria-label="통역 결과"><button id="miniX" type="button" aria-label="닫기">✕</button><p class="mpt" id="miniPt" dir="auto"></p><p class="mko" id="miniKo"></p><p class="mans" id="miniAns" hidden></p><div id="miniYN" style="display:flex;gap:6px;margin-top:8px"></div></div>
 <div class="picker" id="aiBox" hidden>
   <div class="picker-in">
     <div class="picker-head"><p>🤖 검사결과 설명문 (AI)</p><button class="sec" id="aiClose" type="button">닫기 ✕</button></div>
@@ -681,7 +689,7 @@ function ui(){$('sayRow').hidden=mode!=='ask';$('panPt').hidden=mode==='tell';
 function cur(){return log[log.length-1]||null;}
 function ask(q,qt){log.push({q,qt,back:'',a:'',at:'',kind:mode,lang});renderLog();renderCur();return cur();}
 function answer(a,at,ae){let c=cur();if(!c||(!c.q&&!c.a&&c.lang!==lang)){log.push({q:'',qt:'',back:'',a:'',at:'',kind:mode,lang});c=cur();}c.a=c.a?c.a+' / '+a:a;c.at=c.at?c.at+' / '+at:at;if(ae)c.ae=c.ae?c.ae+' / '+ae:ae;renderLog();renderCur();}
-function renderCur(){
+function renderCur(){setTimeout(updMini,0);
   const c=cur()||{q:'',qt:'',back:'',a:'',at:''};
   $('undoBtn').hidden=!log.length;$('undoBtn').textContent=c.a?'↩ 방금 대답 취소':'↩ 방금 질문 취소';
   $('qKo').textContent=c.q;$('qPt').textContent=c.qt;$('qBack').textContent=!c.back?'':(c.back==='미리 넣은 문구'||c.ai)?c.back:'역번역: '+c.back;
@@ -1003,6 +1011,17 @@ function undoLast(){if(busy||!log.length)return;stopSpeak();abortRec();$('koInte
   else{log.pop();side='ko';}
   renderLog();renderCur();ui();if(running){status(side==='pt'?'대답을 지웠습니다. 환자가 다시 말하게 하세요.':'질문을 지웠습니다. 다시 질문하세요.');switchListen();}}
 $('undoBtn').onclick=undoLast;
+/* 화면 아래로 내려가 있을 때 통역 결과를 아래쪽 카드로 보여줌 (스크롤 왕복 없이) */
+let qaVisible=true,miniClosedFor=null;
+function updMini(){const c=cur();const has=c&&(c.qt||c.a);
+  const show=has&&!qaVisible&&miniClosedFor!==c&&$('picker').hidden&&$('sheetBox').hidden&&$('aiBox').hidden;
+  $('miniQA').hidden=!show;document.body.classList.toggle('miniOn',!!show);if(!show)return;
+  $('miniPt').textContent=c.qt||'';$('miniKo').textContent=c.q||'';$('miniPt').hidden=!c.qt;
+  const yn=$('miniYN');yn.textContent='';yn.hidden=mode!=='ask'||!c.qt;if(!yn.hidden)[...document.querySelectorAll('#reply button')].forEach(rb=>{const b=el('button');b.type='button';b.style.cssText='flex:1;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px';b.textContent=rb.querySelector('.f').textContent;b.onclick=e=>{e.stopPropagation();rb.click();};yn.append(b);});
+  const m=$('miniAns');m.hidden=!c.a;m.textContent='';if(c.a){m.append('대답: '+c.a);const sm=el('small','',c.at||'');sm.dir='auto';m.append(sm);}}
+try{new IntersectionObserver(es=>{qaVisible=es.some(e=>e.isIntersecting);updMini();},{threshold:0.15}).observe(document.querySelector('.qa'));}catch(e){}
+$('miniQA').onclick=e=>{if(e.target.id==='miniX')return;document.querySelector('.qa').scrollIntoView({behavior:'smooth',block:'start'});};
+$('miniX').onclick=e=>{e.stopPropagation();miniClosedFor=cur();updMini();};
 $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidden=true;};
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
@@ -1184,6 +1203,6 @@ try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27b</p>
 </body>
 </html>
