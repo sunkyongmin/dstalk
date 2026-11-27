@@ -195,6 +195,8 @@ summary{cursor:pointer;padding:10px 0;font-weight:600}
 .phedit button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;min-height:46px;padding:0 12px}
 .phrase{text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .phrase .k{font-weight:600}
+.phrase.ord{flex-direction:row;align-items:flex-start;gap:10px}.phrase.ord .num{flex:none;min-width:1.8em;height:1.8em;border-radius:999px;background:var(--accent-soft);color:var(--ink);display:grid;place-items:center;font-weight:700;font-size:14px}.phrase.ord>div{display:flex;flex-direction:column;gap:2px}
+.phrase.next{border:2px solid var(--accent);background:var(--accent-soft)}.phrase.done{opacity:.55}
 .phrase .f{font-size:14px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
 .log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .log li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
@@ -424,9 +426,23 @@ const TPLB=[['bp','높음','혈압 높음'],['bp','낮음','혈압 낮음'],['gl
 const SHEET_EN=['Patient information sheet','Test results','What you need to do','Explanation','This is a machine translation.','Blood pressure','Blood sugar','Cholesterol','Anemia','Liver test','Kidney test','Urine test','Chest X-ray','ECG (heart test)','Normal','High','Low','Abnormal','Yes','No','Other tests','Ultrasound'];
 const SHEET_KO=['환자 안내문','검사 결과','하셔야 할 일','설명','기계 번역입니다.','혈압','혈당','콜레스테롤','빈혈','간 검사','콩팥 검사','소변 검사','가슴 엑스레이','심전도','정상','높음','낮음','이상','있음','없음','그 밖의 검사','초음파'];
 const JIDX={정상:14,높음:15,낮음:16,이상:17,있음:18,없음:19};
-const CATS_ASK=['기본','CC·onset','PMHx','PI','ROS','PEx'],CATS_TELL=['기본','검사결과','주사·수액','약','검사·CT','처치','퇴실 안내'];
+const CATS_ASK=['문진 순서','기본','CC·onset','PMHx','PI','ROS','PEx'],CATS_TELL=['기본','검사결과','주사·수액','약','검사·CT','처치','퇴실 안내'];
 // [분류, ko, en, zh, ru, mn, my, km, vi]
 const P=[
+['문진 순서','안녕하세요. 어디가 아파서 오셨어요?'],
+['문진 순서','언제부터 아팠어요?'],
+['문진 순서','당뇨, 고혈압, 고지혈증이 있나요?'],
+['문진 순서','이전에 수술받은 적이 있나요?'],
+['문진 순서','약이나 음식 알레르기가 있나요?'],
+['문진 순서','기침, 가래, 콧물이 있나요?'],
+['문진 순서','목이 아프거나, 열이 나거나, 춥고 떨리나요?'],
+['문진 순서','머리가 아프거나 어지럽지는 않나요?'],
+['문진 순서','속이 울렁거리거나, 토하거나, 설사하지는 않나요?'],
+['문진 순서','숨소리를 들을게요. 숨을 크게 들이마시고 내쉬어 보세요.'],
+['문진 순서','여기 배를 누르면 아픈가요?'],
+['문진 순서','여기 옆구리를 두드리면 아픈가요?'],
+['문진 순서','아~ 해 보세요.'],
+['문진 순서','됐습니다. 간호사님 안내를 받으세요.'],
 ['CC·onset','어디가 불편해서 오셨어요?','What problem brings you here today?','您哪里不舒服？','Что вас беспокоит?','Танд ямар зовиур байна вэ?','ဘာဖြစ်လို့ လာပြတာပါလဲ။','តើអ្នកមិនស្រួលខ្លួនត្រង់ណា?','Anh/chị bị khó chịu ở đâu?'],
 ['CC·onset','아픈 곳을 손으로 가리켜 주세요.','Please point to where it hurts.','请用手指出疼的地方。','Покажите рукой, где болит.','Өвдөж байгаа газраа гараараа заана уу.','နာတဲ့နေရာကို လက်နဲ့ ပြပေးပါ။','សូមចង្អុលកន្លែងដែលឈឺ។','Xin hãy chỉ vào chỗ đau.'],
 ['CC·onset','언제부터 시작됐어요?','When did it start?','从什么时候开始的？','Когда это началось?','Хэзээнээс эхэлсэн бэ?','ဘယ်တုန်းက စဖြစ်တာပါလဲ။','តើវាចាប់ផ្តើមតាំងពីពេលណា?','Bắt đầu từ khi nào?'],
@@ -535,7 +551,7 @@ const $=id=>document.getElementById(id);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const PT_SILENCE_MS=4000,FAST_MS=1000;
-let mode='ask',lang='en',cat='CC·onset',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
+let mode='ask',lang='en',cat='문진 순서',running=false,busy=false,side='ko',rec=null,recToken=0,ptSince=0,log=[],voices=[];
 let srLocal={},trLocal=null,translators={};
 try{const s=localStorage.getItem('dstalk-lang');if(s&&LANGS.some(l=>l.id===s))lang=s;}catch(e){}
 const L=()=>LANGS.find(l=>l.id===lang);
@@ -831,7 +847,7 @@ const INTRO='시작을 누르면 의료진의 질문(한국어)부터 듣습니�
 function setMode(m){mode=m;try{localStorage.setItem('dstalk-mode',m);}catch(e){}
   $('modeAsk').setAttribute('aria-pressed',m==='ask');$('modeTell').setAttribute('aria-pressed',m==='tell');
   if(cur()&&(cur().q||cur().a))log.push({q:'',qt:'',back:'',a:'',at:'',kind:m});renderLog();
-  cat=m==='tell'?'검사결과':'CC·onset';fixCat();renderCats();renderPhrases();renderGuide();
+  cat=m==='tell'?'검사결과':'문진 순서';fixCat();renderCats();renderPhrases();renderGuide();
   side='ko';ui();if(running)switchListen();else status(m==='tell'?'':INTRO);}
 $('modeAsk').onclick=()=>setMode('ask');$('modeTell').onclick=()=>setMode('tell');
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(e.target.tagName)){e.preventDefault();flip();}});
@@ -1026,6 +1042,7 @@ $('sheetOpen').onclick=openSheet;$('sheetClose').onclick=()=>{$('sheetBox').hidd
 const MY_ASK='⭐ 내 문구',MY_TELL='⭐ 내 문구 ';
 const myCat=()=>mode==='tell'?MY_TELL:MY_ASK;const isMy=c=>c===MY_ASK||c===MY_TELL;
 const OLDCAT={'안내':'퇴실 안내','증상':'PI','과거력':'PMHx','검진':'PEx'};
+let ordNext=0;
 let phEdit=false,myPh={move:{},cats:{},hide:[],edit:{},add:[]};
 try{const x=JSON.parse(localStorage.getItem('dstalk-myph')||'null');if(x&&x.add)myPh={move:x.move||{},cats:x.cats||{},hide:x.hide||[],edit:x.edit||{},add:(x.add||[]).map(a=>[OLDCAT[a[0]]||a[0],a[1]])};if(myPh.cats&&Array.isArray(myPh.cats.ask))myPh.cats.ask=myPh.cats.ask.map(c=>[OLDCAT[c[0]]||c[0],OLDCAT[c[1]]||c[1]]);Object.keys(myPh.move||{}).forEach(k=>{if(OLDCAT[myPh.move[k]])myPh.move[k]=OLDCAT[myPh.move[k]];});}catch(e){}
 function saveMyPh(){try{localStorage.setItem('dstalk-myph',JSON.stringify(myPh));}catch(e){}}
@@ -1074,10 +1091,13 @@ function renderPhrases(){
         if(it.builtin){if(to===it.p[0])delete myPh.move[it.orig];else myPh.move[it.orig]=to;}else myPh.add[it.idx][0]=to;
         saveMyPh();renderPhrases();status('"'+it.ko+'" → '+catName(to)+'(으)로 옮겼습니다.');};
       r.style.gridTemplateColumns='1fr auto auto';r.append(i,m,d);box.append(r);return;}
-    const b=el('button','phrase');b.type='button';b.append(el('span','k',it.ko));
+    const ord=cat==='문진 순서';const b=el('button','phrase'+(ord?' ord'+(n===ordNext?' next':n<ordNext?' done':''):''));b.type='button';
+    const wrap=ord?el('div'):b;wrap.append(el('span','k',it.ko));
     const pre=it.builtin&&!it.edited&&l.col!=null&&it.p.length>2;
-    if(pre){const f=el('span','f',it.p[2+l.col]);f.dir='auto';b.append(f);}
-    b.onclick=()=>askPhrase(it.ko);box.append(b);});
+    if(pre){const f=el('span','f',it.p[2+l.col]);f.dir='auto';wrap.append(f);}
+    if(ord){b.append(el('span','num',String(n+1)),wrap);}
+    b.onclick=async()=>{if(ord){const ok=await askPhrase(it.ko);if(ok!==false){ordNext=n+1;renderPhrases();}}else askPhrase(it.ko);};box.append(b);});
+  if(cat==='문진 순서'&&!phEdit){const r=el('button','sec','↺ 순서 처음부터');r.type='button';r.style.cssText='align-self:flex-start;margin-top:4px';r.onclick=()=>{ordNext=0;renderPhrases();};box.append(r);}
 }
 $('editPh').onclick=()=>{phEdit=!phEdit;renderCats();renderPhrases();};
 $('catRen').onclick=()=>{const v=$('catName').value.trim();if(!v||isMy(cat))return;setCats(catList().map(c=>c[0]===cat?[c[0],v]:c.slice()));renderCats();renderPhrases();};
@@ -1196,13 +1216,13 @@ $('copyLog').onclick=async()=>{
 let armed=false;
 $('clearLog').onclick=()=>{const b=$('clearLog');
   if(!armed){armed=true;b.textContent='한 번 더 누르면 지웁니다';setTimeout(()=>{armed=false;b.textContent='기록 지우기';},3000);return;}
-  armed=false;stopSpeak();abortRec();$('draft').value='';curInterim='';$('koInterim').textContent='';$('ptInterim').textContent='';side='ko';log=[];sheetAdd=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';ui();if(running){status('기록을 지웠습니다. 다시 질문하세요.');listen();}};
+  armed=false;ordNext=0;stopSpeak();abortRec();$('draft').value='';curInterim='';$('koInterim').textContent='';$('ptInterim').textContent='';side='ko';log=[];sheetAdd=[];gi=0;renderTpl();tplSnap=null;tplSet=new Set();renderGuide();renderLog();renderCur();$('copyArea').hidden=true;b.textContent='기록 지우기';ui();if(running){status('기록을 지웠습니다. 다시 질문하세요.');listen();}};
 
 renderLangs();renderCats();renderPhrases();renderReply();loadExtra();renderGuide();renderTpl();renderLog();renderCur();ui();loadVoices();
 try{if(localStorage.getItem('dstalk-mode')==='tell')setMode('tell');}catch(e){}
 badge('bSrPt',L().ko+' 음성');
 try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=loadVoices;}catch(e){}
 </script>
-<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27c</p>
+<p class="note" style="text-align:center;padding:12px 0 24px">버전 2026-11-27d</p>
 </body>
 </html>
